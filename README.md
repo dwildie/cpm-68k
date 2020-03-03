@@ -17,7 +17,7 @@ Alternatively, use the following docker image which provides all the necessary t
 
   `docker run -it --rm --name 68k-tools -v {my project directory}:/opt/work dwildie/68k-tools:0.0.1 bash`
   
-The [Dockerfile](https://github.com/dwildie/68k-tools/blob/master/docker/Dockerfile) documents the required pakages to be installed.
+The [Dockerfile](https://github.com/dwildie/68k-tools/blob/master/docker/Dockerfile) documents the required tool installation.
 
 To build:  In the top level directory, type `make`
 
