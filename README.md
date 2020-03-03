@@ -31,7 +31,7 @@ For a different memory configuration modify the MEMORY section in the `boot.rom.
 Once built, the target directory will contain `boot.srec` which should be burnt to the EPROMS, normal even/odd config.
 
 ## CP/M 68K BIOS
-The BIOS is configured for a full populated 16MB static RAM board.  For a different memory configyuration modify the MEMORY section in the `bios.lnk` file.  The CP/M memory region table entry is created from this configuration so it must reflect your hardware.
+The BIOS is configured for a full populated 16MB static RAM board.  For a different memory configuration, modify the MEMORY section in the `bios.lnk` file.  The CP/M memory region table's entry is derived from the `bios.lnk` configuration so it must reflect the target hardware.
 
 This BIOS delegates all console and disk IO to the boot loader/monitor.  Therefore, it will not function with another monitor.
 
@@ -41,7 +41,7 @@ The BIOS has a tuneable LRU disk buffer.  The tuning parameters are in `buffer.i
 
 The BIOS is configured to support a maximum of 10 drives mapped to a single multi-partitioned disk image.  This can be increased by modifying the `DISK_COUNT` value in `bios.i` and allocating additional Disk Parameter Headers in `main.s`.
 
-The BIOS is configured to work with the CPM400.SR system from DISK9 of the CP/M 68K V1.3 distribution disks.  The BIOS `_init` entry point has been moved from the original 0x6000 to 0x6200.  This shifts the BIOS out of the CPM400.SR BSS segment.  CPM400.SR is patched to suit.
+The BIOS is configured to work with the CPM400.SR system from DISK9 of the [CP/M 68K V1.3 distribution disks](http://cpm.z80.de/download/68kv1_3.zip).  The BIOS `_init` entry point has been moved from the original 0x6000 to 0x6200.  This shifts the BIOS out of the CPM400.SR BSS segment.  CPM400.SR is patched to suit.
 
 Once built, the target directory will contain `bios.srec`.
 
