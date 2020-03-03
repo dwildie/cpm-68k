@@ -23,12 +23,12 @@ To build:  In the top level directory, type `make`
 
 ## Boot loader/monitor
 The Boot loader/monitor is build for the standard memory configuration:
-+ ROM at 0xFD0000
-+ RAM at 0xFD8000
++ 32KB RAM at 0xFD8000
++ 32KB ROM at 0xFD0000
 
 For a different memory configuration modify the MEMORY section in the `boot.rom.lnk` file.
 
-Once built, the target directory will contain `boot.srec` which should be burnt to the EPROMS, normal even/odd config.
+Once built, the target directory will contain `boot.srec` which should be burnt to the EPROMs, normal even/odd config.
 
 ## CP/M 68K BIOS
 The BIOS is configured for a full populated 16MB static RAM board.  For a different memory configuration, modify the MEMORY section in the `bios.lnk` file.  The CP/M memory region table's entry is derived from the `bios.lnk` configuration so it must reflect the target hardware.
@@ -37,7 +37,11 @@ This BIOS delegates all console and disk IO to the boot loader/monitor.  Therefo
 
 The BIOS has a tuneable LRU disk buffer.  The tuning parameters are in `buffer.i`:
 + `BUFFER_COUNT` - The number of available buffers.  Buffers are reused based on a LRU algorithm.
-+ `BUFFER_SECTORS` - The size of each buffer in HDD sectors (512 bytes).  The maximum size is 32 sectors, ie. 16KB.
++ `BUFFER_SECTORS` - The size of each buffer in HDD sectors (512 bytes).  The maximum size is 32 sectors, ie. 16KB per buffer.
+
+The current configuration is:
++ `BUFFER_COUNT = 4`
++ `BUFFER_SECTORS = 8`
 
 The BIOS is configured to support a maximum of 10 drives mapped to a single multi-partitioned disk image.  This can be increased by modifying the `DISK_COUNT` value in `bios.i` and allocating additional Disk Parameter Headers in `main.s`.
 
