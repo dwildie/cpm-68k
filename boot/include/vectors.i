@@ -1,0 +1,9 @@
+VBUSERR             =         0x08
+VADDERR             =         0x0C
+VILLEGINST          =         0x10
+VZERODIV            =         0x14
+VCHK                =         0x18
+VTRAPV              =         0x1C
+VPRIVINST           =         0x20
+VTRACE              =         0x24
+VTRAP               =         0xBC
