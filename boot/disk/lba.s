@@ -2,10 +2,11 @@
                     .include  "include/ide.i"
                     .include  "include/disk-def.i"
 
-                    .data
 *-----------------------------------------------------------------------------------------------------
+                    .data
 LBA_VALUE:          .long     0                             | Current LBA value for the physical disk
 
+*-----------------------------------------------------------------------------------------------------
                     .text
                     .global   initLBA
                     .global   setLBA

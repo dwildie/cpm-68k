@@ -15,7 +15,6 @@ biosHandler:        CMPI      #functionCount,%D0
                     LEA       functionTable,%A5
                     MOVE.L    (%A5,%D0.W),%A5               | get handler address
                     JSR       (%A5)                         | call handler
-
 ret:                RTE
 
 

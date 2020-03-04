@@ -1,3 +1,5 @@
+                    .text
+
                     .global   toUpperChar
                     .global   strcmp
                     .global   split
