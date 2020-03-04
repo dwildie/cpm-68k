@@ -1,4 +1,5 @@
 DIR_TARGET	    := target
+SAMPLES_DIR     := samples
 CPM_SOURCE	    := cpm_1_3
 CPM_ZIP         := 68kv1_3.zip
 CMDS		    := ./cmds
@@ -11,7 +12,7 @@ MD    := mkdir
 RM    := rm
 SHELL := sh
 
-all: $(DIR_TARGET)/disk1.img $(DIR_TARGET)/disk10.img
+all: $(DIR_TARGET)/disk1.img $(DIR_TARGET)/disk10.img  $(DIR_TARGET)/diskAll.img
 
 clean:
 	$(RM) -rf $(DIR_TARGET)/*
@@ -28,7 +29,7 @@ $(DIR_TARGET)/disk10.img: $(DIR_TARGET) $(CPM_SOURCE)/DISK1 $(BOOT_FILE)
 
 $(DIR_TARGET)/diskAll.img: $(DIR_TARGET) $(CPM_SOURCE)/DISK1 $(BOOT_FILE)
 	$(SHELL) $(CMDS)/formatImage.sh $@ 10
-	$(SHELL) $(CMDS)/copyAll.sh $@ 0 10 $(CPM_SOURCE)
+	$(SHELL) $(CMDS)/copyAll.sh $@ 0 10 $(CPM_SOURCE) 1 $(SAMPLES_DIR)
 	$(SHELL) $(CMDS)/installSystem.sh $@ $(BOOT_FILE)
 
 $(BOOT_FILE): $(BIOS_FILE) $(DIR_TARGET)/cpm400.sr
@@ -41,11 +42,7 @@ $(DIR_TARGET)/cpm400.sr: $(CPM_SOURCE)/DISK9/CPM400.SR
 $(CPM_SOURCE)/DISK1: $(CPM_SOURCE)/$(CPM_ZIP)
 	cd $(CPM_SOURCE); unzip -q -o $(CPM_ZIP)
 
-$(CPM_SOURCE)/$(CPM_ZIP): $(CPM_SOURCE)
-	wget -P $(CPM_SOURCE) http://cpm.z80.de/download/$(CPM_ZIP) 
-
-#$(CPM_SOURCE):
-#	$(MD) -p $(CPM_SOURCE)
-#
-#$(DIR_TARGET):
-#	$(MD) -p $(DIR_TARGET)
+$(CPM_SOURCE)/$(CPM_ZIP): | $(CPM_SOURCE)
+	rm -rf $(CPM_SOURCE)/*
+	wget -O $(CPM_SOURCE)/$(CPM_ZIP) http://cpm.z80.de/download/$(CPM_ZIP) 
+	touch $(CPM_SOURCE)/$(CPM_ZIP)
