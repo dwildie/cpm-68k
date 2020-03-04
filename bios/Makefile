@@ -30,8 +30,6 @@ obj/bios.srec: obj/main.o obj/buffer.o
 target/bios.srec: obj/bios.srec
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K S100 Bios" -o $@
 	srec_info $@
-	cp $@ /mnt/Damian/Dropbox/retroComputing/S100/68000\ CPU/gnu/Monitor/$(notdir $@)
-	cp $@ /tmp
 
 clean:
 	rm -rf obj/* target/*

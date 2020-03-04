@@ -1,6 +1,6 @@
 
-BUFFER_COUNT        =         0x08                          | The number of buffers of each of size BUFFER_SECTORS
-BUFFER_SECTORS      =         0x20                          | The number of HDD sectors in each buffer, Max is 0x20
+BUFFER_COUNT        =         0x04                          | The number of buffers of each of size BUFFER_SECTORS
+BUFFER_SECTORS      =         0x08                          | The number of HDD sectors in each buffer, Max is 0x20 (32)
 
 HDD_SECTOR_SIZE     =         0x200                         | Size of a HDD sector
 HDD_SECT_MULU_SHIFT =         9                             | The number of places to left shift to multiply by HDD_SECTOR_SIZE
