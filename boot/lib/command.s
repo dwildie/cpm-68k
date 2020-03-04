@@ -15,14 +15,14 @@ cmdTable:                                                   | Array of command e
                     CMD_TABLE_ENTRY "a", driveACmd, "a                  : Select drive A"
                     CMD_TABLE_ENTRY "b", driveBCmd, "b                  : Select drive B"
                     CMD_TABLE_ENTRY "boot" bootCmd, "boot <file>        : Load S-Record <file> into memory and execute"
-                    CMD_TABLE_ENTRY "dir", directoryCmd, "dir                : display directory of current drive"
+                    CMD_TABLE_ENTRY "dir", directoryCmd, "dir                : Display directory of current drive"
                     CMD_TABLE_ENTRY "def",diskDefCmd, "def                : Display the CPM disk definition"
                     CMD_TABLE_ENTRY "help", helpCmd, "help               : Display the list of commands"
                     CMD_TABLE_ENTRY "id", idCmd, "id                 : Display the drive's id info"
                     CMD_TABLE_ENTRY "init", initIdeDriveCmd, "init               : Initialise the current IDE drive"
                     CMD_TABLE_ENTRY "lba", lbaCmd, "lba <val>          : Set selected drive's LBA value"
                     CMD_TABLE_ENTRY "mem", memDumpCmd, "mem <addr> <len>   : Display <len> bytes starting at <addr>"
-                    CMD_TABLE_ENTRY "read", readCmd, "read <lba>         : Read and display the sector at <lba>"
+                    CMD_TABLE_ENTRY "read", readCmd, "read <lba>         : Read and display the drive sector at <lba>"
 
 cmdTableLength      =         . - cmdTable
 cmdEntryLength      =         0x0c
