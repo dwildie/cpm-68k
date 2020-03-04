@@ -1,5 +1,5 @@
 AS       = m68k-elf-as
-ASFLAGS += -m68010
+ASFLAGS += -m68000
 ASFLAGS += -alms
 
 CC       = m68k-elf-gcc
@@ -69,8 +69,6 @@ obj/main.o: main.s
 
 obj/boot.srec: obj/main.o $(IO_OBJ) $(DSK_OBJ) $(LIB_OBJ) $(SREC_OBJ) $(BIOS_OBJ)
 	$(LD) -T boot.rom.lnk obj/main.o $(IO_OBJ) $(DSK_OBJ) $(LIB_OBJ) $(SREC_OBJ) $(BIOS_OBJ) -Map $(@:.srec=.map) -o $@
-	cp $(@:.srec=.map) /tmp
-	cp $(@:.srec=.map) /mnt/Damian/Dropbox/retroComputing/S100/68000\ CPU/gnu/Monitor/$(notdir $(@:.srec=.map))
 
 target/boot.srec: obj/boot.srec
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K Boot Loader" -o $@
