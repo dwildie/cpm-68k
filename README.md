@@ -1,4 +1,4 @@
-# CP/M 68K for the S100 68000/68010 card
+# CP/M 68K for the S100 68000/68010 Board
 
 This project provides:
 * Boot loader/monitor
@@ -6,10 +6,10 @@ This project provides:
 * CP/M file system images
 
 This code assumes, and has been tested with, the following hardware:
-* [68000/68010 Card](http://www.s100computers.com/My%20System%20Pages/68000%20Board/68K%20CPU%20Board.htm)
-* [Propeller Console IO Card](http://www.s100computers.com/My%20System%20Pages/Console%20IO%20Board/Console%20IO%20Board.htm)
-* [16MB Static RAM Card](http://www.s100computers.com/My%20System%20Pages/16MG%20RAM%20Board/16MG%20RAM%20Board.htm)
-* [IDE/CF Card](http://www.s100computers.com/My%20System%20Pages/IDE%20Board/My%20IDE%20Card.htm)
+* [68000/68010 Board](http://www.s100computers.com/My%20System%20Pages/68000%20Board/68K%20CPU%20Board.htm)
+* [Propeller Console IO Board](http://www.s100computers.com/My%20System%20Pages/Console%20IO%20Board/Console%20IO%20Board.htm)
+* [16MB Static RAM Board](http://www.s100computers.com/My%20System%20Pages/16MG%20RAM%20Board/16MG%20RAM%20Board.htm)
+* [IDE/CF Board](http://www.s100computers.com/My%20System%20Pages/IDE%20Board/My%20IDE%20Card.htm)
 
 Requires make, gnu 68000 cross tools, cpmtools to be installed.
 
