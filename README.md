@@ -83,3 +83,6 @@ Three file system image are built:
 + disk1.img Single partition image using the 4mb-hd format containing boot400.sr and the contents of DISK1 of the CP/M 68K V1.3 binary distribution
 + disk10.img Ten partition image using the 4mb-hd format, paritions 0 to 8 contain DISK1 - DISK9 of the CP/M 68K v1.3 binary distribution.  boot400.sr is in partition 0, partition 9 is empty.
 + diskAll.img Ten partition image using the 4mb-hd format, paritions 0 contains all files from DISK1 - DISK9 of the CP/M 68K v1.3 binary distribution plus boot400.sr.  Partitions 1 - 9 are empty.
+
+# Contributions
+The IDE code used in the boot loader/monitor was originally written by John Monahan who also designed the S-100 cards being used.  Thank you John.
