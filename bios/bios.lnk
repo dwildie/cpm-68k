@@ -1,0 +1,40 @@
+OUTPUT_FORMAT(srec)
+
+MEMORY
+{
+    ram : ORIGIN = 0x6200, LENGTH = 0x80000
+}
+
+SECTIONS
+{
+  .text : { 
+    __text_start__ = .;
+    *(.text*) 
+    __text_end__ = .;
+  } > ram
+
+  .data : {
+    __data_start__ = .;
+    *(.data*)
+    __data_end__ = .;
+  } > ram
+  
+  .bss : { 
+    __bss_start__ = .;
+    *(.bss*) *(COMMON)
+    __bss_end__ = .;
+  } > ram
+  
+  __bss_length__ = __bss_end__ - __bss_start__;
+  
+  . += 1;
+  . = ALIGN (0x100);
+  __memory_region_start__ = .;
+  __memory_region_end__ = 0x00FCFFFF;
+  __memory_region_length__ = 1 + (__memory_region_end__ - __memory_region_start__);
+  
+  /DISCARD/ : {
+    *(.eh_frame);
+    *(.comment);
+  }
+}
