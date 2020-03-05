@@ -35,13 +35,15 @@ You should now see the CP/M `A>` prompt.
 
 # Building
 
-Requires make, gnu 68000 cross tools, cpmtools to be installed.
+Requires git, make, gnu 68000 cross tools, cpmtools to be installed.
 
 Alternatively, use the following docker image which provides all the necessary tools:
 
   `docker run -it --rm --name 68k-tools -v {my project directory}:/opt/work dwildie/68k-tools:0.0.1 bash`
   
 The [Dockerfile](https://github.com/dwildie/68k-tools/blob/master/docker/Dockerfile) documents the required tool installation.
+
+Clone the repository: `git clone https://github.com/dwildie/cpm-68k.git`
 
 To build:  In the top level directory, type `make`
 
