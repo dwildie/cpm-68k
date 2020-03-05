@@ -31,7 +31,7 @@ The release contains the following files:
 
 You should now see the CP/M `A>` prompt.
 
-
+![boot](cpm_boot_b.png)
 
 # Building
 
