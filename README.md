@@ -21,7 +21,7 @@ The release contains the following files:
 * disk10.img Ten partition image using the 4mb-hd format, paritions 0 to 8 contain DISK1 - DISK9 of the CP/M 68K v1.3 binary distribution.  boot400.sr is in partition 0, partition 9 is empty.
 * diskAll.img Ten partition image using the 4mb-hd format, paritions 0 contains all files from DISK1 - DISK9 of the CP/M 68K v1.3 binary distribution plus boot400.sr.  Partitions 1 - 9 are empty.
 
-# Executing
+# Usage
 
 1. Burn the boot.srec file into the boards EPROMS.  Copy one of the file system images to a CF card using your preferred tool, dd, balenaEtcher, etc.
 1. Boot the 68000 into the boot loader/monitor.  Type `help<ENTER>` for a list of available commands.
