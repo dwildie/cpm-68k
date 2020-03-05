@@ -11,6 +11,30 @@ This code assumes, and has been tested with, the following hardware:
 * [16MB Static RAM Board](http://www.s100computers.com/My%20System%20Pages/16MG%20RAM%20Board/16MG%20RAM%20Board.htm)
 * [IDE/CF Board](http://www.s100computers.com/My%20System%20Pages/IDE%20Board/My%20IDE%20Card.htm)
 
+# Release
+
+The release contains the following files:
+* boot.srec - This is the boot loader / monitor in SRecord format and  must be burnt into the board's EPROMS,normal even/odd configuration.
+* bios.srec - This is the bios in SRecord format.
+* boot400.sr - This is the patched cpm400.sr and bios.srec concatenated into a single SRecord file
+* disk1.img Single partition image using the 4mb-hd format containing boot400.sr and the contents of DISK1 of the CP/M 68K V1.3 binary distribution
+* disk10.img Ten partition image using the 4mb-hd format, paritions 0 to 8 contain DISK1 - DISK9 of the CP/M 68K v1.3 binary distribution.  boot400.sr is in partition 0, partition 9 is empty.
+* diskAll.img Ten partition image using the 4mb-hd format, paritions 0 contains all files from DISK1 - DISK9 of the CP/M 68K v1.3 binary distribution plus boot400.sr.  Partitions 1 - 9 are empty.
+
+# Executing
+
+1. Burn the boot.srec file into the boards EPROMS.  Copy one of the file system images to a CF card using your preferred tool, dd, balenaEtcher, etc.
+1. Boot the 68000 into the boot loader/monitor.  Type `help<ENTER>` for a list of available commands.
+1. Select the appropriate disk drive, a or b.
+1. Type `boot boot400.sr<ENTER>` and the loader will start reading the file into memory.
+1. When loading is complete, you will be prompted to continue, enter `y`.
+
+You should now see the CP/M `A>` prompt.
+
+
+
+# Building
+
 Requires make, gnu 68000 cross tools, cpmtools to be installed.
 
 Alternatively, use the following docker image which provides all the necessary tools:
@@ -50,5 +74,12 @@ The BIOS is configured to work with the CPM400.SR system from DISK9 of the [CP/M
 Once built, the target directory will contain `bios.srec`.
 
 ## CP/M file system images
+Each of the file system images contain the boot400.sr file in the first partition.  This file:
++ Contains the patched cpm400.sr and the bios.sr
++ Is the file that must be loaded and executed to start CP/M
 
 
+Three file system image are built:
++ disk1.img Single partition image using the 4mb-hd format containing boot400.sr and the contents of DISK1 of the CP/M 68K V1.3 binary distribution
++ disk10.img Ten partition image using the 4mb-hd format, paritions 0 to 8 contain DISK1 - DISK9 of the CP/M 68K v1.3 binary distribution.  boot400.sr is in partition 0, partition 9 is empty.
++ diskAll.img Ten partition image using the 4mb-hd format, paritions 0 contains all files from DISK1 - DISK9 of the CP/M 68K v1.3 binary distribution plus boot400.sr.  Partitions 1 - 9 are empty.
