@@ -1,3 +1,26 @@
+          .macro              TO_BIG_END reg
+                    ROL.W     #8,\reg                                 | Convert to big endian
+                    SWAP      \reg
+                    ROL.W     #8,\reg
+          .endm
+
+          .macro              PRT_ERR strMsg
+                    PUTS      strPartition
+                    BSR       writeHexDigit
+                    PUTS      \strMsg
+                    MOVE.W    #1,%D0
+          .endm
+
+          .macro              PUTSP count
+                    MOVEM.L   %D0-%D1,-(%SP)
+                    MOVE.W    \count,%D1
+                    MOVE.B    #' ',%D0
+                    BRA       99f
+98:                 BSR       writeCh
+99:                 DBRA      %D1,98b
+                    MOVEM.L   (%SP)+,%D0-%D1
+          .endm
+
           .macro              PUTCH char
                     MOVE.L    %D0,-(%SP)
                     MOVE.B    \char,%D0
