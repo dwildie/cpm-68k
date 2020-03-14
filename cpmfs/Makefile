@@ -6,7 +6,7 @@ CMDS		    := ./cmds
 BIOS_FILE       := ../bios/target/bios.srec
 BOOT_FILE       := $(DIR_TARGET)/boot400.sr
 BOOT_START_ADDR := 0x400
-BOOT_HEADER     := "CP/M 68K S100 V0.0.1"
+BOOT_HEADER     := "CP/M 68K S100 V0.0.2"
 
 MD    := mkdir
 RM    := rm

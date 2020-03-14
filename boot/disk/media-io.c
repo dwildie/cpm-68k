@@ -6,6 +6,7 @@ int mediaWrite(unsigned long sector, unsigned char *buffer, unsigned long sector
 
 extern unsigned long getPartitionStart(unsigned long currentDriveId, unsigned long currentPartitionId);
 extern void rdSectors(unsigned long sector, unsigned char *buffer, unsigned long sectorCount);
+extern void wrSectors(unsigned long sector, unsigned char *buffer, unsigned long sectorCount);
 
 
 static int currentDriveId, currentPartitionId;
@@ -28,30 +29,16 @@ int mediaInit(int driveId, int partitionId)
 
 int mediaRead(unsigned long sector, unsigned char *buffer, unsigned long sectorCount)
 {
-	//printf("mediaRead(%d,%d)\n", sector, sectorCount);
-
 	unsigned long startOffset = getPartitionStart(currentDriveId, currentPartitionId);
-
 	rdSectors(startOffset + sector, buffer, sectorCount);
-
     return 1;
 }
 
-int mediaWrite(unsigned long sector, unsigned char *buffer, unsigned long sector_count)
+int mediaWrite(unsigned long sector, unsigned char *buffer, unsigned long sectorCount)
 {
-    unsigned long i;
-
-    for (i=0; i<sector_count; i++)
-    {
-        // ...
-        // Add platform specific sector (512 bytes) write code here
-        //..
-
-        sector ++;
-        buffer += 512;
-    }
-
-    return 0;
+	unsigned long startOffset = getPartitionStart(currentDriveId, currentPartitionId);
+	wrSectors(startOffset + sector, buffer, sectorCount);
+    return 1;
 }
 
 void mediaClose()

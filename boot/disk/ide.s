@@ -8,7 +8,7 @@
                     .global   initIdeDrive
                     .global   getDriveIdent
                     .global   readSectors,rdSectors
-                    .global   writeSectors
+                    .global   writeSectors,wrSectors
                     .global   showErrors
 
 *-----------------------------------------------------------------------------------------------------
@@ -206,8 +206,26 @@ readSector:         MOVE.B    #REG_DATA,I8255_PORT_C                  | REG regs
                     BSR       showErrors                              | If error display status
 5:                  RTS
 
+
 *----------------------------------------------------------------------------------------------------
-* Write one physical sector to the currently selected drive at the current position
+* wrSectors(long lba, byte *buffer, long count)
+*----------------------------------------------------------------------------------------------------
+wrSectors:          LINK      %FP,#0
+                    MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+
+                    MOVE.L    0x08(%FP),%D0
+                    BSR       setIdeLba
+
+                    MOVE.L    0x0C(%FP),%A2
+                    MOVE.L    0x10(%FP),%D0
+                    BSR       writeSectors
+
+                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    UNLK      %FP
+                    RTS
+                    
+*----------------------------------------------------------------------------------------------------
+* Write a number of physical sector to the currently selected drive at the current position
 * %D0 the number of sectors to write
 * %A2 the address of the buffer holding the data to be written
 * Currently will only write a single sector

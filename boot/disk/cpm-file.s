@@ -4,33 +4,36 @@
                     .include  "include/macros.i"
 
                     .text
-                    .global   fOpen
-                    .global   fRead
-                    .global   fClose
+                    .global   fOpenCPM
+                    .global   fReadCPM
+                    .global   fCloseCPM
+
+                    .global   readBlock                               | **** DEBUG
 
 *-----------------------------------------------------------------------------------------------------
-* fOpen(*fileName)
+* fOpenCPM(long partitionOffset, char* fileName)
 * Open fileName, 8 char name + 3 char type
 * Return: 0 success
 *         1 file not found
 *-----------------------------------------------------------------------------------------------------
-fOpen:              LINK      %FP,#-extentsArrayBytes
+fOpenCPM:           LINK      %FP,#-extentsArrayBytes
 
                     MOVE.W    #0,recordCount
                     MOVE.L    #0,lastRecordSize
                     MOVE.L    #0,blockCount
                     MOVE.L    #0,blockArray
+                    MOVE.l    0x08(%FP),partitionOffset
 
                     MOVE.L    #0,%D3                                  | Use %D3 as the extent count
 
 
-                    MOVE.L    8(%FP),-(%SP)                           | Format the name as 10 characters
+                    MOVE.L    0x0C(%FP),-(%SP)                        | Format the name as 10 characters
                     BSR       formatName                              | in location fileName
                     ADDQ.L    #4,%SP
 
                     LEA       __free_ram_start__,%A0
-                    MOVE.L    %A0,-(%SP)
-                    MOVE.L    #0,-(%SP)                               | **************** TODO Needs to be partition start
+                    MOVE.L    %A0,-(%SP)                              | Param buffer
+                    MOVE.L    partitionOffset,-(%SP)                  | Param: partitionOffset
                     BSR       readCpmDirectory                        | Read the directory, %D0 contains the number of entries
                     ADD       #8,%SP
 
@@ -41,7 +44,7 @@ fOpen:              LINK      %FP,#-extentsArrayBytes
                     BSR       findExtents
                     ADD.L     #0x0E,%SP
 
-fo2:                TST.B     %D0                                     | Check if any matching extents found
+                    TST.B     %D0                                     | Check if any matching extents found
                     BNE       3f
 
                     MOVE.L    #1,%D0                                  | Error file not found, return 1
@@ -49,7 +52,7 @@ fo2:                TST.B     %D0                                     | Check if
 
 3:                  LEA       -extentsArrayBytes(%FP),%A0             | The base of the extents array, %D0 already contains the count
                     BSR       processExtents
-fo3:                TST.B     %D0
+                    TST.B     %D0
                     BNE       10f                                     | Error
 
 
@@ -61,16 +64,16 @@ fo3:                TST.B     %D0
 
                     BSR       readNextBlock                           | Read the first block now
 
-fo4:                MOVE.L    #0,%D0                                  | Success, return 0
+                    MOVE.L    #0,%D0                                  | Success, return 0
 
 10:                 UNLK      %FP
                     RTS
 
 *-----------------------------------------------------------------------------------------------------
-* fread(word count, *buffer)
+* cpmFread(word count, *buffer)
 * Read count bytes into buffer, return the number of bytes read in %D0
 *-----------------------------------------------------------------------------------------------------
-fRead:              LINK      %FP,#0
+fReadCPM:           LINK      %FP,#0
                     MOVEM.L   %D1-%D3/%A0-%A2,-(%SP)
 
                     MOVE.W    0x08(%FP),%D3                           | Number of bytes to read less one for DBREQ
@@ -106,7 +109,7 @@ fRead:              LINK      %FP,#0
 *-----------------------------------------------------------------------------------------------------
 * Close the current file
 *-----------------------------------------------------------------------------------------------------
-fClose:
+fCloseCPM:
                     RTS
 
 *-----------------------------------------------------------------------------------------------------
@@ -155,7 +158,7 @@ readBlock:          LSL.W     #1,%D0                                  | Multiply
                     MOVE.W    (%A1,%D0.W),%D1                         | Get the block index
 
                     LSL.L     #DEF_BLOCK_512_SHIFT,%D1                | Convert to sector offset, ie LBA
-
+                    ADD.L     partitionOffset,%D1                     | Add the offset to the start of the partition
                     MOVE.L    %D1,%D0                                 | Set the drive's LBA value
                     BSR       setLBA
 
@@ -171,12 +174,6 @@ readBlock:          LSL.W     #1,%D0                                  | Multiply
 
 1:                  CLR.B     %D0
 2:                  RTS
-
-getCurrentBlock:
-                    RTS
-
-getNextBlock:
-                    RTS
 
 *-----------------------------------------------------------------------------------------------------
 * Find each extent for the specified file
@@ -329,6 +326,7 @@ recordCount:        ds.w      1
 lastRecordSize:     ds.w      1
 blockCount:         ds.w      1
 blockArray:         ds.w      maxFileBlocks                           | 256 * 2k blocks = max 512k byte file
+partitionOffset:    ds.l      1                                       | Offset to the start of the partition
 
 nextBlockIndex:     ds.w      1                                       | Block array index for the current block
 offsetIntoBlock:    ds.w      1                                       | Offset into current block
