@@ -155,9 +155,15 @@ readNextBlock:      MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
 readBlock:          LSL.W     #1,%D0                                  | Multiply by 2
                     CLR.L     %D1
                     LEA       blockArray,%A1
-                    MOVE.W    (%A1,%D0.W),%D1                         | Get the block index
 
+                    MOVE.W    (%A1,%D0.W),%D1                         | Get the block index
                     LSL.L     #DEF_BLOCK_512_SHIFT,%D1                | Convert to sector offset, ie LBA
+
+                    MOVE.W    #DEF_DD_DIR_START,%D2                   | Add in the offset for any boot tracks
+                    EXT.L     %D2                                     | To long
+                    LSR.L     #SECT_HDD_CPM_SHIFT,%D2                 | From CPM sectors to HDD sectors
+                    ADD.L     %D2,%D1
+
                     ADD.L     partitionOffset,%D1                     | Add the offset to the start of the partition
                     MOVE.L    %D1,%D0                                 | Set the drive's LBA value
                     BSR       setLBA

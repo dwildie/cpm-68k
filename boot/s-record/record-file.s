@@ -1,10 +1,8 @@
-                    .global   loadRecordFile
-                    .global   readRecord,SR0,SR1,SR2,SR3,SR4,SR5,processStart      | ******* DEBUG
-
-
                     .include  "include/macros.i"
                     .include  "include/ascii.i"
 
+                    .global   loadRecordFile
+                    
 MAX_REC_SIZE        =         0x100
 MAX_DATA_SIZE       =         0x80
 
@@ -81,11 +79,11 @@ readRecord:         LINK      %FP,#-(MAX_DATA_SIZE+MAX_REC_SIZE)
                     BSR       asciiToByte
                     ADDQ.L    #4,%SP
 
+                    EXT.W     %D0                                     | To word
                     ADD.B     %D0,%D4                                 | Size is included in the checksum
 
-                    MOVE.B    %D0,%D2                                 | Save byte count in %D2
-                    CLR.W     %D3                                     | D3 is word size
-                    MOVE.B    %D0,%D3                                 | Remaining char count Which is twice the byte count
+                    MOVE.W    %D0,%D2                                 | Save byte count in %D2
+                    MOVE.W    %D0,%D3                                 | Remaining char count Which is twice the byte count
                     LSL.W     #1,%D3
 
                     CMPI.B    #'2',%D5                                | A S2 record has a three byte (24bit) address
@@ -99,8 +97,7 @@ SR4:                MOVE.B    #0x00,(%A2)+                            | Insert a
                     CMP.B     %D3,%D0                                 | Check that we got all the chars
 SR0:                BNE       errUnexpectedEOF
 
-SR1:                CLR.W     %D3
-                    MOVE.B    %D2,%D3                                 | Use D3 as the loop counter
+SR1:                MOVE.W    %D2,%D3                                 | Use D3 as the loop counter
                     SUBI.W    #2,%D3                                  | Exclude the checksum, less one for DBRA
 
 2:                  PEA       (%A1)                                   | Convert each ascii pair to byte value and store in data buffer
@@ -211,19 +208,17 @@ processHeader:      LINK      %FP,#0
                     TST.W     %D1                                     | Skip if no chars
                     BEQ       3f
 
-                    SUB.W     #1,%D1                                  | Less one for DBRA
-
                     PUTS      strHeader
 
+                    BRA       2f                                      | start at bottom of loop
 1:                  MOVE.B    (%A1)+,%D0
                     BEQ       2f
                     BSR       writeCh
-
 2:                  DBRA      %D1,1b
 
-                    PUTS      strReading
+3:                  PUTS      strReading
 
-3:                  MOVEM.L   (%SP)+,%D1/%A1
+                    MOVEM.L   (%SP)+,%D1/%A1
                     UNLK      %FP
                     RTS
 

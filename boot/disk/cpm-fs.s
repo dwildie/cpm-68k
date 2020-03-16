@@ -151,13 +151,13 @@ readCpmDirectory:   LINK      %FP,#0
                     MOVEM.L   %D2-%D6/%A0-%A1,-(%SP)
 
                     MOVE.W    #DEF_DD_DIR_START,%D0
-                    ANDI.L    #0xFFFF,%D0                             | #DEF_DD_DIR_START is word, ensure upper word is zero
+                    EXT.L     %D0                                     | To long
+                    LSR.L     #SECT_HDD_CPM_SHIFT,%D0                 | From CPM sectors to HDD sectors
                     ADD.L     0x08(%FP),%D0
                     BSR       setLBA                                  | Seek to start of directory
 
                     MOVE.W    #DEF_DD_DIR_SECS,%D0                    | Calculate the number of ide sectors to be read
-                    MULU.W    #DEF_DD_SEC_SIZE,%D0
-                    DIVU.W    #IDE_SEC_SIZE,%D0
+                    LSR.L     #SECT_HDD_CPM_SHIFT,%D0                 | From CPM sectors to HDD sectors
 
                     MOVE.L    0x0C(%FP),%A2
 
