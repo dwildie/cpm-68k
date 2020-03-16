@@ -1,0 +1,2 @@
+as68 -l -u -s 0: b:bios.s
+as68 -l -u -s 0: b:buffer.s
