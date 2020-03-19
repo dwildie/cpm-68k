@@ -41,9 +41,9 @@ _start:             MOVEA.L   #__bss_start__, %A0                     | Zero bss
                     BSR       initialiseDiskSys                       | Initialise the disk subsystem
                     BSR       initDrives                              | List the available drives
                     BSR       selectDriveA                            | Default to drive A
-
-                    BSR       getDriveStatus
-                    BEQ       5f                                      | Disk not initialised, don't open FAT driver
+*
+*                    BSR       getDriveStatus
+*                    BEQ       5f                                      | Disk not initialised, don't open FAT driver
 
 5:                  BSR       cmdLoop                                 | Into the endless command loop
 
@@ -53,7 +53,7 @@ _start:             MOVEA.L   #__bss_start__, %A0                     | Zero bss
                     .align(2)
                     .global   strID
 
-strID:              .asciz    "CP/M 68K S100 Boot Loader V0.1.0\n\r"
+strID:              .asciz    "CP/M-68K S100 Boot Loader V0.1.0\n\r"
 
 *---------------------------------------------------------------------------------------------------------
                     .data

@@ -1,0 +1,31 @@
+reloc.rel reloc.rel reloc.68k
+reloc pip.rel pip.68k
+reloc init.rel init.68k
+reloc copy.rel copy.68k
+reloc stat.rel stat.68k
+reloc ddt.rel ddt.68k
+
+reloc as68.rel as68.68k
+reloc dump.rel dump.68k
+reloc ddt10.rel ddt10.68k
+
+reloc lo68.rel lo68.68k
+reloc ed.rel ed.68k
+
+reloc cp68.rel cp68.68k
+reloc ar68.rel ar68.68k
+reloc find.rel find.68k
+reloc more.rel more.68k
+reloc nm68.rel nm68.68k
+
+reloc c068.rel c068.68k
+reloc c168.rel c168.68k
+
+reloc link68.rel link68.68k
+reloc sendc68.rel sendc68.68k
+reloc size68.rel size68.68k
+reloc xfer86.rel xfer86.68k
+reloc format.rel format.68k
+reloc term.rel term.68k
+
+reloc config.rel config.68k

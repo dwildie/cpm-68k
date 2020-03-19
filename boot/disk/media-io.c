@@ -20,7 +20,7 @@ int mediaInit(int driveId, int partitionId)
 
 	if (fl_attach_media(mediaRead, mediaWrite) != FAT_INIT_OK)
 	{
-		printf("ERROR: Media attach failed\n");
+		//printf("ERROR: Media attach failed\n");
 		return 1;
 	}
 

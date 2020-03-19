@@ -276,10 +276,11 @@ diskDefCmd:         BSR       showDiskDef
 *---------------------------------------------------------------------------------------------------------
 * Load the arg[1] file into memory and execute
 *---------------------------------------------------------------------------------------------------------
-bootCmd:            CMPI.B    #2,%D0                                  | Needs at least two args
-                    BLT       wrongArgs
+bootCmd:            BSR       newLine
 
-                    BSR       newLine
+                    CMPI.B    #2,%D0                                  | Is there a file specified
+                    BLT       loader                                  | No, try and read the boot loader from the system tracks
+
                     MOVE.L    4(%A0),-(%SP)
                     BSR       loadRecordFile                          | Will return start address in %D0
                     ADDQ.L    #4,%SP
@@ -292,6 +293,10 @@ bootCmd:            CMPI.B    #2,%D0                                  | Needs at
 
                     PUTS      strFileNotFound
                     BRA       1f
+
+loader:             BSR       loadBootLoader                          | Call the boot loader
+                    PUTS      strBootLoaderError                      | Should never return
+
 
 1:                  RTS
 
@@ -349,4 +354,4 @@ strFileNotFound:    .asciz    "\r\nFile not found\r\n"
 strError:           .asciz    "\r\nError\r\n"
 strSuccess:         .asciz    "Success\r\n"
 strDriveNotInitialised: .asciz "\r\nDrive not initialised\r\n"
-
+strBootLoaderError: .asciz    "Boot failed\r\n"

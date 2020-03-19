@@ -1,0 +1,3 @@
+as68 -l -u -s 0: b:ldbios.s
+lo68 -s -TFE0000 -uldr -o b:cpmldr.sys ldrlib b:ldbios.o
+b:putboot b:cpmldr.sys A

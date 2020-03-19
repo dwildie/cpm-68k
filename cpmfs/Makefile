@@ -3,16 +3,20 @@ SAMPLES_DIR     := samples
 CPM_SOURCE	    := cpm_1_3
 CPM_ZIP         := 68kv1_3.zip
 CMDS		    := ./cmds
-BIOS_FILE       := ../bios/target/bios.srec
+BIOS_DIR        := ../bios
+BIOS_TARGET     := $(BIOS_DIR)/target
+BIOS_SRC        := $(BIOS_TARGET)/bios.s $(BIOS_TARGET)/btstrap.s  $(BIOS_TARGET)/ldbios.s $(BIOS_TARGET)/buffer.s $(BIOS_DIR)/PUTBOOT.S
+BIOS_SUB        := $(BIOS_DIR)/*.sub
+BIOS_FILE       := $(BIOS_DIR)/target/bios.srec
 BOOT_FILE       := $(DIR_TARGET)/boot400.sr
 BOOT_START_ADDR := 0x400
-BOOT_HEADER     := "CP/M 68K S100 V0.0.2"
+BOOT_HEADER     := "CP/M-68K S100 V0.1.0"
 
 MD    := mkdir
 RM    := rm
 SHELL := sh
 
-all: $(DIR_TARGET)/disk1.img $(DIR_TARGET)/disk10.img  $(DIR_TARGET)/diskAll.img
+all: $(DIR_TARGET)/disk1.img $(DIR_TARGET)/disk10.img  $(DIR_TARGET)/diskAll.img $(DIR_TARGET)/drive_a.img $(DIR_TARGET)/drive_b.img $(DIR_TARGET)/drive_c.img
 
 clean:
 	$(RM) -rf $(DIR_TARGET)/*
@@ -27,11 +31,27 @@ $(DIR_TARGET)/disk10.img: $(DIR_TARGET) $(CPM_SOURCE)/DISK1 $(BOOT_FILE)
 	$(SHELL) $(CMDS)/copyDisks.sh $@ 10 $(CPM_SOURCE)
 	$(SHELL) $(CMDS)/installSystem.sh $@ $(BOOT_FILE)
 
+# 10 partitions with CP/M distribution copied to partition 0 and bios sources to partition 1
 $(DIR_TARGET)/diskAll.img: $(DIR_TARGET) $(CPM_SOURCE)/DISK1 $(BOOT_FILE)
 	$(SHELL) $(CMDS)/formatImage.sh $@ 10
 	$(SHELL) $(CMDS)/copyAll.sh $@ 0 10 $(CPM_SOURCE) 1 $(SAMPLES_DIR)
 	$(SHELL) $(CMDS)/installSystem.sh $@ $(BOOT_FILE)
+	$(SHELL) $(CMDS)/copyFiles.sh $@ 1 $(BIOS_SRC) $(BIOS_SUB)
 
+# 1 partition with CP/M distribution copied to partition 0
+$(DIR_TARGET)/drive_a.img: $(DIR_TARGET) $(CPM_SOURCE)/DISK1
+	$(SHELL) $(CMDS)/formatImage.sh $@ 11
+	$(SHELL) $(CMDS)/copyAll.sh $@ 0 10 $(CPM_SOURCE) 1 $(SAMPLES_DIR)
+	
+# 1 partition with BIOS sources
+$(DIR_TARGET)/drive_b.img: $(DIR_TARGET)
+	$(SHELL) $(CMDS)/formatImage.sh $@ 1
+	$(SHELL) $(CMDS)/copyFiles.sh $@ 0 $(BIOS_SRC) $(BIOS_SUB)
+	
+# 1 empty partition
+$(DIR_TARGET)/drive_c.img: $(DIR_TARGET)
+	$(SHELL) $(CMDS)/formatImage.sh $@ 1
+	
 $(BOOT_FILE): $(BIOS_FILE) $(DIR_TARGET)/cpm400.sr
 	cat $(DIR_TARGET)/cpm400.sr | sed -n '/\x1a/q;p' | grep -v "^S9" | srec_cat $(BIOS_FILE) - -header $(BOOT_HEADER) -execution-start-address=$(BOOT_START_ADDR) > $@
 	unix2dos $@

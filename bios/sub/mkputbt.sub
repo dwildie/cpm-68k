@@ -1,0 +1,3 @@
+as68 -l -u -s 0: b:putboot.s
+lo68 -r -o b:putboot.rel b:putboot.o
+reloc b:putboot.rel b:putboot.68k

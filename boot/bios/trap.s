@@ -4,7 +4,7 @@
 
                     .global   biosHandler
                     .global   readSector                              | ***** Debug
-                    .global   writeSector                             | ***** Debug
+                    .global   g                             | ***** Debug
 
 *-----------------------------------------------------------------------------------------------------
 * Trap 15 - Handle calls from the bios
@@ -103,4 +103,4 @@ functionCount       =         (. - functionTable) / 4
                     .align(2)
 
 strUnused:          .asciz    "\r\nUnused function 0x"
-strInit:            .asciz    "CP/M 68K S100 Virtual Disk Initialisation\r\n"
+strInit:            .asciz    "CP/M-68K S100 Virtual Disk Initialisation\r\n"

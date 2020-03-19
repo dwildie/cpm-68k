@@ -1,0 +1,2 @@
+lo68 -r -o b:putboot.rel b:putboot.o
+
