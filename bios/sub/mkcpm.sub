@@ -1,0 +1,13 @@
+era b:bios.o
+era b:buffer.o
+era b:biosend.o
+era b:cpm.rel
+era b:cpm.sys
+
+as68 -l -u -s 0: b:bios.s
+as68 -l -u -s 0: b:buffer.s
+as68 -l -u -s 0: b:biosend.s
+
+lo68 -r -o b:cpm.rel -ucpm cpmlib b:bios.o b:buffer.o b:biosend.o
+reloc -b400 b:cpm.rel b:cpm.sys
+pip a:=b:cpm.sys

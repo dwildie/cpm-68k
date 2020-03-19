@@ -1,0 +1,1 @@
+lo68 -s -TFE0000 -uldr -o b:cpmldr.sys ldrlib b:ldbios.o

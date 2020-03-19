@@ -20,4 +20,6 @@ DEF_DD_DIR_SECS     =         (DEF_DD_DIR_ENTRY * DEF_DD_MAX_DIRS) / DEF_DD_SEC_
 DEF_BLOCK_512_SHIFT =         2                                       | Left shift 2 = multiply * 4 = block size / HDD sector size
 DEF_BLOCK_128_SHIFT =         4                                       | Left shift 4 = multiply by 16 = block size / CPM sector size
 
-SECT_HDD_CPM_SHIFT  =         2                                       | Shidt by 2 to convert from hdd to cpm sectors
+SECT_HDD_CPM_SHIFT  =         2                                       | Shift by 2 to convert from hdd to cpm sectors
+
+SECT_CPM_BYTE_SHIFT =         7                                       | Shift by 7 to convert between CP/M sectors and bytes

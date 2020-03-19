@@ -7,6 +7,7 @@
                     .global   write,read                              | *** DEBUG
                     .global   _end                                    | End of CPM
                     .global   _ccp
+                    .global   bssEnd
 
 *--------------------------------------------------------------------------------
 * Function 0: Initialisation
@@ -26,11 +27,30 @@ in_2:               LEA       handler,%A0
                     MOVE.L    %A0,TRAP_3                              | set up trap #3 handler
                     BSR       initBuffers                             | Initialise the disk buffers
 
+*          .ifne               _CPM_
+*
+*                    LEA.L     bssEnd,%A0                              | Setup the memory table
+*                    MOVE.L    %A0,tpaStart
+*                    MOVE.L    #MEM_END,%D0
+*                    SUB.L     tpaStart,%D0
+*                    MOVE.L    %D0,tpaSize
+*          .endif
+
+                    MOVE.W    #0x0D,%D1
+                    BSR       conOut
+                    MOVE.W    #0x0A,%D1
+                    BSR       conOut
+
                     LEA       strInit,%A0                             | Display initialisation string
                     BSR       puts
 
-                    MOVE.W    #0x0,%D0                                | Function 0, initialise
-                    TRAP      #MONITOR_TRAP
+                    MOVE.W    #0x0D,%D1
+                    BSR       conOut
+                    MOVE.W    #0x0A,%D1
+                    BSR       conOut
+
+                    MOVE.W    #MON_INIT,%D0                           | Function 0, initialise
+                    TRAP      #MON_TRAP
 
                     CLR.L     %D0                                     | log on disk A, user 0
 
@@ -39,41 +59,45 @@ in_2:               LEA       handler,%A0
 *--------------------------------------------------------------------------------
 * Trap handler
 *--------------------------------------------------------------------------------
-handler:            CMPI      #functionCount,%D0
+handler:            CMPI.W    #funcCount,%D0
                     BCC       h1
-                    LSL       #2,%D0                                  | multiply bios function by 4
-                    LEA       functionTable,%A0                       | Get offset into table
+                    EXT.L     %D0
+                    LSL.L     #2,%D0                                  | multiply bios function by 4
+                    LEA       fTable,%A0                              | Get offset into table
                     MOVE.L    (%A0,%D0.W),%A1                         | get handler address
                     JSR       (%A1)                                   | call handler
 h1:                 RTE
 
-functionTable:
-                    .long     _init                                   | Function 0,  0x00
+*--------------------------------------------------------------------------------
+* Function table
+*--------------------------------------------------------------------------------
+                    .even
+fTable:             .long     _init                                   | Function 0,  0x00
                     .long     warmBoot                                | Function 1,  0x01
-                    .long     consoleStatus                           | Function 2,  0x02
-                    .long     consoleIn                               | Function 3,  0x03
-                    .long     consoleOut                              | Function 4,  0x04
+                    .long     conStatus                               | Function 2,  0x02
+                    .long     conIn                                   | Function 3,  0x03
+                    .long     conOut                                  | Function 4,  0x04
                     .long     listOut                                 | Function 5,  0x05
                     .long     auxOut                                  | Function 6,  0x06
                     .long     auxIn                                   | Function 7,  0x07
                     .long     diskHome                                | Function 8,  0x08
-                    .long     selectDisk                              | Function 9,  0x09
+                    .long     selDisk                                 | Function 9,  0x09
                     .long     setTrack                                | Function 10, 0x0A
                     .long     setSector                               | Function 11, 0x0B
                     .long     setDMA                                  | Function 12, 0x0C
                     .long     read                                    | Function 13, 0x0D
                     .long     write                                   | Function 14, 0x0E
                     .long     listStatus                              | Function 15, 0x0F
-                    .long     sectorTranslate                         | Function 16, 0x10
+                    .long     secTranslate                            | Function 16, 0x10
                     .long     setDMA                                  | Function 17, 0x11
-                    .long     getMemoryTable                          | Function 18, 0x12
+                    .long     getMemTable                             | Function 18, 0x12
                     .long     getIOBye                                | Function 19, 0x13
                     .long     setIOByte                               | Function 20, 0x14
                     .long     flush                                   | Function 21, 0x15
                     .long     setHandlers                             | Function 22, 0x16
 
-*functionCount       =         (. - functionTable) / 4
-functionCount       =         23
+*funcCount       =         (. - fTable) / 4
+funcCount           =         23
 
 *--------------------------------------------------------------------------------
 * Function 1: Warm boot.
@@ -84,24 +108,24 @@ warmBoot:           JMP       _ccp
 * Function 2: Console status.
 * Is character available? Yes %D0 = 1, No %D0 = 0
 *--------------------------------------------------------------------------------
-consoleStatus:      MOVE.W    #0x2,%D0                                | Function 2
-                    TRAP      #MONITOR_TRAP
+conStatus:          MOVE.W    #MON_CSTAT,%D0                          | Function 2
+                    TRAP      #MON_TRAP
                     RTS
 
 *--------------------------------------------------------------------------------
 * Function 3: Read console character
 * Wait until a character is available, return in %D0
 *--------------------------------------------------------------------------------
-consoleIn:          MOVE.W    #0x3,%D0                                | Function 3
-                    TRAP      #MONITOR_TRAP
+conIn:              MOVE.W    #MON_CIN,%D0                            | Function 3
+                    TRAP      #MON_TRAP
                     RTS
 
 *--------------------------------------------------------------------------------
 * Function 4: Write console character
 * Write the character in %D1 to the console
 *--------------------------------------------------------------------------------
-consoleOut:         MOVE.W    #0x4,%D0                                | Function 4
-                    TRAP      #MONITOR_TRAP
+conOut:             MOVE.W    #MON_COUT,%D0                           | Function 4
+                    TRAP      #MON_TRAP
                     RTS
 
 *--------------------------------------------------------------------------------
@@ -129,12 +153,12 @@ diskHome:           CLR.W     selTrack
 *--------------------------------------------------------------------------------
 * Function 9: Select disk given by register %D1.B
 *--------------------------------------------------------------------------------
-selectDisk:         MOVEQ     #0,%D0
+selDisk:            MOVEQ     #0,%D0
                     CMP.B     #DISK_COUNT,%D1                         | valid drive number?
                     BPL       sd1                                     | if no, return 0 in %D0
                     MOVE.B    %D1,selDrive                            | else, save drive number
                     MOVE.B    selDrive,%D0
-                    MULU      #DISK_PARAM_HDR_LEN,%D0
+                    MULU      #DPH_LEN,%D0
                     ADD.L     #dpHdr0,%D0                             | point %D0 at correct dph
 sd1:                RTS
 
@@ -208,7 +232,7 @@ selectedLBADrive:   MOVEM.L   %D1-%D2,-(%SP)
 
                     CLR.L     %D1                                     | LBA into the lower 24 bits
                     MOVE.W    selTrack,%D1                            | Selected track * sectors/track
-                    LEA       diskParamBlock,%A0
+                    LEA       dpBlock,%A0
                     MULU.W    (%A0),%D1
 
                     CLR.L     %D2
@@ -239,13 +263,13 @@ listStatus:         MOVE.B    #0xff,%D0
 *--------------------------------------------------------------------------------
 * Function 16: Sector translate
 *--------------------------------------------------------------------------------
-sectorTranslate:    MOVE.L    %D1,%D0
+secTranslate:       MOVE.L    %D1,%D0
                     RTS
 
 *--------------------------------------------------------------------------------
 * Function 18: Get address of memory regions table
 *--------------------------------------------------------------------------------
-getMemoryTable:     MOVE.L    #memoryTable,%D0                        | return address of mem region table
+getMemTable:        MOVE.L    #memTable,%D0                           | return address of mem region table
                     RTS
 
 *--------------------------------------------------------------------------------
@@ -285,31 +309,29 @@ sh1:                RTS
 puts:               MOVE.B    (%A0)+,%D1
                     CMPI.B    #0,%D1
                     BEQ       p1
-                    BSR       consoleOut
+                    BSR       conOut
                     BRA       puts
 p1:                 RTS
 
 *-----------------------------------------------------------------------------------------------------
                     .data
 
-currentLBADrive:    .long     -1                                      | LBA & drive of current loaded sector, lower 24bits = LBA, upper 8 = drive
 dma:                .long     0
 selTrack:           .word     0                                       | track requested by setTrack
 selSector:          .word     0
-selDrive:           .byte     0xff                                    | drive requested by selectDisk
+selDrive:           .byte     0xff                                    | drive requested by selDisk
 
                     .even
           .ifne               _GNU_
-memoryTable:        .word     1                                       | 1 memory region
-                    .long     __memory_region_start__                 | 
-                    .long     __memory_region_length__                | 
+memTable:           .word     1                                       | 1 memory region - TPA only
+                    .long     __memory_region_start__                 | Start of the Transient Program Area
+                    .long     __memory_region_length__                | Size of the Transient Program Area
           .endif
 
           .ifne               _CPM_
-                    .even
-memoryTable:        .word     1                                       | 1 memory region
-                    .long     _end + 0x10                             | _end is at the top of the bios + ccp
-                    .long     0xFD80000 - _end - 0x11                 | 
+memTable:           .word     1                                       | 1 memory region - TPA only
+tpaStart:           .long     0x100000                                | Default: Start of the Transient Program Area
+tpaSize:            .long     0xECFFFF                                | Default: Size of the Transient Program Area
           .endif
 *-----------------------------------------------------------------------------------------------------
 * disk parameter headers
@@ -318,8 +340,8 @@ dpHdr0:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     bpBlock                                 | ptr to the boot disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV0                                 | ptr to allocation vector
 
@@ -327,8 +349,8 @@ dpHdr1:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     dpBlock                                 | ptr to disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV1                                 | ptr to allocation vector
 
@@ -336,8 +358,8 @@ dpHdr2:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     dpBlock                                 | ptr to disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV2                                 | ptr to allocation vector
 
@@ -345,8 +367,8 @@ dpHdr3:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     dpBlock                                 | ptr to disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV3                                 | ptr to allocation vector
 
@@ -354,8 +376,8 @@ dpHdr4:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     dpBlock                                 | ptr to disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV4                                 | ptr to allocation vector
 
@@ -363,8 +385,8 @@ dpHdr5:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     dpBlock                                 | ptr to disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV5                                 | ptr to allocation vector
 
@@ -372,8 +394,8 @@ dpHdr6:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     dpBlock                                 | ptr to disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV6                                 | ptr to allocation vector
 
@@ -381,8 +403,8 @@ dpHdr7:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     dpBlock                                 | ptr to disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV7                                 | ptr to allocation vector
 
@@ -390,8 +412,8 @@ dpHdr8:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     dpBlock                                 | ptr to disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV8                                 | ptr to allocation vector
 
@@ -399,15 +421,29 @@ dpHdr9:             .long     0                                       | No trans
                     .word     0                                       | scratchpad 1
                     .word     0                                       | scratchpad 2
                     .word     0                                       | scratchpad 3
-                    .long     directoryBuffer                         | ptr to directory buffer
-                    .long     diskParamBlock                          | ptr to disk parameter block
+                    .long     dirBuffer                               | ptr to directory buffer
+                    .long     dpBlock                                 | ptr to disk parameter block
                     .long     0                                       | ptr to check vector
                     .long     allocV9                                 | ptr to allocation vector
 
 *-----------------------------------------------------------------------------------------------------
+* Boot disk parameter block
+*-----------------------------------------------------------------------------------------------------
+bpBlock:            .word     32                                      | sectors per track
+                    .byte     4                                       | block shift
+                    .byte     15                                      | block mask
+                    .byte     0                                       | extent mask
+                    .byte     0                                       | dummy fill
+                    .word     2047                                    | disk size
+                    .word     255                                     | 64 directory entries
+                    .word     0                                       | directory mask
+                    .word     0                                       | directory check size
+                    .word     2                                       | track offset
+
+*-----------------------------------------------------------------------------------------------------
 * Disk parameter block
 *-----------------------------------------------------------------------------------------------------
-diskParamBlock:     .word     32                                      | sectors per track
+dpBlock:            .word     32                                      | sectors per track
                     .byte     4                                       | block shift
                     .byte     15                                      | block mask
                     .byte     0                                       | extent mask
@@ -422,7 +458,7 @@ diskParamBlock:     .word     32                                      | sectors 
                     .bss
                     .even
 
-directoryBuffer:    DS.B      128                                     | directory buffer
+dirBuffer:          DS.B      128                                     | directory buffer
 
 allocV0:            DS.B      2048                                    | allocation vector
 allocV1:            DS.B      2048
@@ -440,11 +476,11 @@ allocV9:            DS.B      2048
                     .even
 
           .ifne               _GNU_
-strInit:            .ascii    "\r\n\CP/M 68K S100 BIOS V0.1.0.G Initialisation\r\n"
+strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.0.G1 Initialisation"
           .endif
 
           .ifne               _CPM_
-strInit:            .ascii    "\r\n\CP/M 68K S100 BIOS V0.1.0.C Initialisation\r\n"
+strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.0.C1 Initialisation"
           .endif
 
                     DC.B      0

@@ -339,6 +339,7 @@ openVDisk:          LINK      %FP,#-4                                 | Local va
 *---------------------------------------------------------------------------------------------------------
                     .section  .rodata.strings
                     .align(2)
+                    .global   strDriveA
 
 strFileMode:        .asciz    "r+"
 
