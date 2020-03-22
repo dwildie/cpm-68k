@@ -7,7 +7,7 @@ CFLAGS += -ffreestanding
 CFLAGS += -I../baselibc/include
 CFLAGS += -Iinclude
 
-SRC = $(wildcard src/*.c)
+SRC = src/fat_access.c src/fat_cache.c src/fat_filelib.c src/fat_misc.c src/fat_string.c src/fat_table.c src/fat_write.c
 OBJ = $(patsubst src/%.c, obj/%.o, $(SRC))
 
 all: target/libfat.a

@@ -1445,21 +1445,21 @@ int fl_remove( const char * filename )
 //-----------------------------------------------------------------------------
 // fl_createdirectory: Create a directory based on a path
 //-----------------------------------------------------------------------------
-#if FATFS_INC_WRITE_SUPPORT
-int fl_createdirectory(const char *path)
-{
-    int res;
-
-    // If first call to library, initialise
-    CHECK_FL_INIT();
-
-    FL_LOCK(&_fs);
-    res =_create_directory((char*)path);
-    FL_UNLOCK(&_fs);
-
-    return res;
-}
-#endif
+//#if FATFS_INC_WRITE_SUPPORT
+//int fl_createdirectory(const char *path)
+//{
+//    int res;
+//
+//    // If first call to library, initialise
+//    CHECK_FL_INIT();
+//
+//    FL_LOCK(&_fs);
+//    res =_create_directory((char*)path);
+//    FL_UNLOCK(&_fs);
+//
+//    return res;
+//}
+//#endif
 //-----------------------------------------------------------------------------
 // fl_listdirectory: List a directory based on a path
 //-----------------------------------------------------------------------------
