@@ -41,9 +41,6 @@ _start:             MOVEA.L   #__bss_start__, %A0                     | Zero bss
                     BSR       initialiseDiskSys                       | Initialise the disk subsystem
                     BSR       initDrives                              | List the available drives
                     BSR       selectDriveA                            | Default to drive A
-*
-*                    BSR       getDriveStatus
-*                    BEQ       5f                                      | Disk not initialised, don't open FAT driver
 
 5:                  BSR       cmdLoop                                 | Into the endless command loop
 

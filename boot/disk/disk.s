@@ -24,11 +24,13 @@ currentDrive:       .ds.w     1
 *-----------------------------------------------------------------------------------------------------
 * Initialise  the disk system
 *-----------------------------------------------------------------------------------------------------
-initialiseDiskSys:  BSR       initLBA
+initialiseDiskSys:  MOVE.W    #DISK_A,currentDrive
+
+                    BSR       initLBA
 
                     LEA       driveStatus,%A0
-                    MOVE.B    #0,DISK_A(%A0)
-                    MOVE.B    #0,DISK_B(%A0)
+                    MOVE.B    #DISK_UNAVAILABLE,DISK_A(%A0)
+                    MOVE.B    #DISK_UNAVAILABLE,DISK_B(%A0)
 
                     RTS
 
@@ -93,15 +95,15 @@ initDrives:         MOVE.W    #DISK_A,%D0                             | Initiali
 initDrive:          BSR       initIdeDrive
                     BEQ       1f
 
-                    MOVE.B    #0,%D0                                  | Mark drive not present
+                    MOVE.B    #DISK_UNAVAILABLE,%D0                   | Mark drive not present
                     BSR       setDriveStatus
                     MOVE.B    #1,%D0                                  | Return 1 = error
                     BRA       2f
 
-1:                  MOVE.B    #1,%D0                                  | Mark drive present
+1:                  MOVE.B    #DISK_AVAILABLE,%D0                     | Mark drive present
                     BSR       setDriveStatus
-                    MOVE.B    #0,%D0                                  | Return 0 = success
 
+                    MOVE.B    #0,%D0                                  | Return 0 = success
 2:                  RTS
 
 *-----------------------------------------------------------------------------------------------------
@@ -109,7 +111,7 @@ initDrive:          BSR       initIdeDrive
 *-----------------------------------------------------------------------------------------------------
 setDriveStatus:     LEA       driveStatus,%A0
                     MOVE.W    currentDrive,%D1
-                    MOVE.B    %D0,(%A0,%D1)
+                    MOVE.B    %D0,(%A0,%D1.W)
                     RTS
 
 *-----------------------------------------------------------------------------------------------------
@@ -117,7 +119,7 @@ setDriveStatus:     LEA       driveStatus,%A0
 *-----------------------------------------------------------------------------------------------------
 getDriveStatus:     LEA       driveStatus,%A0
                     MOVE.W    currentDrive,%D1
-                    MOVE.B    (%A0,%D1),%D0
+                    MOVE.B    (%A0,%D1.W),%D0
                     RTS
 
 *-----------------------------------------------------------------------------------------------------
@@ -132,6 +134,13 @@ selectDriveA:       MOVE.W    #DISK_A,%D0
 *-----------------------------------------------------------------------------------------------------
 selectDriveB:       MOVE.W    #DISK_B,%D0
                     BSR       selectDrive
+                    RTS
+
+*-----------------------------------------------------------------------------------------------------
+* Select a drive specified in %D0.W
+*-----------------------------------------------------------------------------------------------------
+selectDrive:        MOVE.W    %D0,currentDrive
+                    BSR       setIdeDrive                             | Select Drive 0 or 1
                     RTS
 
 *-----------------------------------------------------------------------------------------------------
@@ -204,13 +213,6 @@ showDriveIdent:     PEA       __free_ram_start__
 writeDrive:         MOVE.B    #'A',%D0
                     ADD.W     currentDrive,%D0
                     BSR       writeCh
-                    RTS
-
-*-----------------------------------------------------------------------------------------------------
-* Select a drive specified in %D0.W
-*-----------------------------------------------------------------------------------------------------
-selectDrive:        MOVE.W    %D0,currentDrive
-                    BSR       setIdeDrive                             | Select Drive 0 or 1
                     RTS
 
 *-----------------------------------------------------------------------------------------------------

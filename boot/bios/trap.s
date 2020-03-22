@@ -29,8 +29,8 @@ unused:             PUTS      strUnused
 *-----------------------------------------------------------------------------------------------------
 * Initialise
 *-----------------------------------------------------------------------------------------------------
-init:               PUTS      strInit
-                    BSR       initDisks
+init:               BSR       initDisks
+*                   PUTS      strInit
                     CLR.L     %D0
                     RTS
 
@@ -103,4 +103,4 @@ functionCount       =         (. - functionTable) / 4
                     .align(2)
 
 strUnused:          .asciz    "\r\nUnused function 0x"
-strInit:            .asciz    "CP/M-68K S100 Virtual Disk Initialisation\r\n"
+strInit:            .asciz    "CP/M-68K S100 Virtual Disk Initialised\r\n"
