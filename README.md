@@ -11,9 +11,27 @@ This code assumes, and has been tested with, the following hardware:
 * [16MB Static RAM Board](http://www.s100computers.com/My%20System%20Pages/16MG%20RAM%20Board/16MG%20RAM%20Board.htm)
 * [IDE/CF Board](http://www.s100computers.com/My%20System%20Pages/IDE%20Board/My%20IDE%20Card.htm)
 
-# Release
+# Release 0.1.0
 
-The release contains the following files:
+Updates included in this release are:
+* Bootable CP/M disk images
+* Support for CF cards with MBR partition tables.
+* Support for "virtual" disks on FAT16/32 file systems.
+
+This release contains the following files:
+* boot.srec - This is the boot loader / monitor in SRecord format and  must be burnt into the board's EPROMS,normal even/odd configuration.
+* bios.srec - This is the bios in SRecord format.
+* boot400.sr - This is the patched cpm400.sr and bios.srec concatenated into a single SRecord file
+* diskAll.iso - Ten partition, bootable image in iso format using the 4mb-hd format, paritions 0 contains binary files from DISK1 - DISK9 of the CP/M 68K v1.3 binary distribution plus boot400.sr.  Partitions 1 contains the assembler source files for the puboot utility, boot loader BIOS and the CP/M BIOS plus submit files.
+* drive_a.img - Single partition, bootable image using the 4mb-hd format and contains the binary files from DISK1 - DISK9 of the CP/M 68K V1.3 distribution.
+* drive_b.img - Single partition image using the 4mb-hd format and containing the assembler source files for the puboot utility, boot loader BIOS and the CP/M BIOS plus submit files.
+* drive_c.img - Single partition, empty image using the 4mb-hd format.
+
+The drive_a.img, drive_b.img and drive_c.img images are intended to be used on a FAT16/32 CF card.
+
+# Release 0.0.1
+
+This release contains the following files:
 * boot.srec - This is the boot loader / monitor in SRecord format and  must be burnt into the board's EPROMS,normal even/odd configuration.
 * bios.srec - This is the bios in SRecord format.
 * boot400.sr - This is the patched cpm400.sr and bios.srec concatenated into a single SRecord file
@@ -88,3 +106,5 @@ Three file system image are built:
 
 # Contributions
 The IDE code used in the boot loader/monitor was originally written by John Monahan who also designed the S-100 cards being used.  Thank you John.
+
+The FAT16/32 library is from [Ultra-Embedded](http://ultra-embedded.com/fat_filelib/).

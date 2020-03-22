@@ -2,16 +2,14 @@
                     .include  "include/ide.i"
 
                     .text
+
                     .global   setIdeLba
                     .global   setIdeDrive
                     .global   initIdeDrive
                     .global   getDriveIdent
-                    .global   readSectors
-                    .global   writeSectors
+                    .global   readSectors,rdSectors
+                    .global   writeSectors,wrSectors
                     .global   showErrors
-
-*-----------------------------------------------------------------------------------------------------
-
 
 *-----------------------------------------------------------------------------------------------------
 * Select Drive 0 (A) or 1 (B)
@@ -72,14 +70,15 @@ DELAY_32:           MOVE.B    #40,%D1                                 | DELAY ~3
                     RTS
 
 *-----------------------------------------------------------------------------------------------------
-* Read the selected drives id data into the buffer at %A2
+* getDriveIdent(byte* destination)
+* Read the selected drives id data into the destination buffer
 *-----------------------------------------------------------------------------------------------------
 getDriveIdent:      LINK      %FP,#0
                     MOVEM.L   %D1-%D6/%A2,-(%SP)
 
                     MOVE.W    #IDE_SEC_SIZE,-(%SP)
                     MOVE.L    8(%FP),-(%SP)
-                    BSR       clearBuffer
+                    BSR       memClr
                     ADDQ.L    #6,%SP
 
                     BSR       waitNotBusy
@@ -131,6 +130,23 @@ setIdeLba:          BSR       waitNotBusy                             | make sur
                     MOVE.B    #REG_SEC_HIGH,%D5                       | Write high (of 24bits) byte
                     BSR       write8255PortAB                         | Write to 8255 ports A & B (A = IDE, B - LED HEX Display)
 
+                    RTS
+
+*----------------------------------------------------------------------------------------------------
+* rdSectors(long lba, byte *buffer, long count)
+*----------------------------------------------------------------------------------------------------
+rdSectors:          LINK      %FP,#0
+                    MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+
+                    MOVE.L    0x08(%FP),%D0
+                    BSR       setIdeLba
+
+                    MOVE.L    0x0C(%FP),%A2
+                    MOVE.L    0x10(%FP),%D0
+                    BSR       readSectors
+
+                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    UNLK      %FP
                     RTS
 
 *----------------------------------------------------------------------------------------------------
@@ -190,8 +206,26 @@ readSector:         MOVE.B    #REG_DATA,I8255_PORT_C                  | REG regs
                     BSR       showErrors                              | If error display status
 5:                  RTS
 
+
 *----------------------------------------------------------------------------------------------------
-* Write one physical sector to the currently selected drive at the current position
+* wrSectors(long lba, byte *buffer, long count)
+*----------------------------------------------------------------------------------------------------
+wrSectors:          LINK      %FP,#0
+                    MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+
+                    MOVE.L    0x08(%FP),%D0
+                    BSR       setIdeLba
+
+                    MOVE.L    0x0C(%FP),%A2
+                    MOVE.L    0x10(%FP),%D0
+                    BSR       writeSectors
+
+                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    UNLK      %FP
+                    RTS
+                    
+*----------------------------------------------------------------------------------------------------
+* Write a number of physical sector to the currently selected drive at the current position
 * %D0 the number of sectors to write
 * %A2 the address of the buffer holding the data to be written
 * Currently will only write a single sector
@@ -328,19 +362,27 @@ showErrors:         MOVE.L    %D1,-(%SP)                              | Save %D1
 
                     BTST      #STATUS_BUSY_BIT,%D4
                     BEQ       1f
+                    PUTS      strDrive
+                    BSR       writeDrive
                     PUTS      strDriveBusy                            | Drive Busy stuck high.
                     BRA       10f
 
 1:                  BTST      #STATUS_READY_BIT,%D4
                     BNE       2f
+                    PUTS      strDrive
+                    BSR       writeDrive
                     PUTS      strDriveNotReady                        | Drive Not Ready (bit 6) stuck low.
                     BRA       10f
 
 2:                  BTST.B    #STATUS_FAULT_BIT,%D4
                     BNE       3f
+                    PUTS      strDrive
+                    BSR       writeDrive
                     PUTS      strWriteFault                           | Drive write fault. 
                     BRA       10f
 
+                    PUTS      strDrive
+                    BSR       writeDrive
 3:                  PUTS      strUnknownStatus
                     BRA       10f
 
@@ -349,29 +391,41 @@ showErrors:         MOVE.L    %D1,-(%SP)                              | Save %D1
 
                     BTST.B    #ERR_NOT_FOUND_BIT,%D4
                     BEQ       5f
+                    PUTS      strDrive
+                    BSR       writeDrive
                     PUTS      strSectorNotFound
                     BRA       10f
 
 5:                  BTST.B    #ERR_BAD_BLOCK_BIT,%D4                  | Bad block detected
                     BEQ       6f
+                    PUTS      strDrive
+                    BSR       writeDrive
                     PUTS      strBadBlock
                     BRA       10f
 
 6:                  BTST.B    #ERR_UNCORRECT_BIT,%D4                  | Uncorrectable data error
                     BEQ       7f
+                    PUTS      strDrive
+                    BSR       writeDrive
                     PUTS      strUncorrectable
                     BRA       10f
 
 7:                  BTST.B    #ERR_ABORT_BIT,%D4                      | Command aborted
                     BEQ       8f
+                    PUTS      strDrive
+                    BSR       writeDrive
                     PUTS      strInvalidCmd
                     JMP       10f
 
 8:                  BTST.B    #ERR_TRACK_NF_BIT,%D4                   | Track zero not found
                     BEQ       9f
+                    PUTS      strDrive
+                    BSR       writeDrive
                     PUTS      strTrackZero
                     JMP       10f
 
+                    PUTS      strDrive
+                    BSR       writeDrive
 9:                  PUTS      strUnknownError
                     BSR       newLine
                     BRA       11f
@@ -385,34 +439,17 @@ showErrors:         MOVE.L    %D1,-(%SP)                              | Save %D1
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
-* clearBuffer(*buffer, word length)
-* Clear the buffer
-*---------------------------------------------------------------------------------------------------------
-clearBuffer:        LINK      %FP,#0
-                    MOVEM.L   %D0/%A0,-(%SP)
-
-                    MOVE.W    0x0C(%FP),%D0
-                    MOVE.L    0x08(%FP),%A0
-
-                    BRA       2f
-1:                  MOVE.B    #0,(%A0,%D0)
-2:                  DBRA      %D0,1b
-
-                    MOVEM.L   (%SP)+,%D0/%A0
-                    UNLK      %FP
-                    RTS
-
-*---------------------------------------------------------------------------------------------------------
                     .section  .rodata.strings
                     .align(2)
 
-strDriveBusy:       .asciz    "Drive Busy (bit 7) stuck high.   Status = "
-strDriveNotReady:   .asciz    "Drive Ready (bit 6) stuck low.  Status = "
-strWriteFault:      .asciz    "Drive write fault.    Status = "
-strUnknownStatus:   .asciz    "Unknown error in status register.   Status = "
-strSectorNotFound:  .asciz    "Sector not found. Error Register = "
-strBadBlock:        .asciz    "Bad Sector ID.    Error Register = "
-strUncorrectable:   .asciz    "Uncorrectable data error.  Error Register = "
-strInvalidCmd:      .asciz    "Invalid Command. Error Register = "
-strTrackZero:       .asciz    "Track Zero not found. Error Register = "
-strUnknownError:    .asciz    "Unknown Error. Error Register = "
+strDrive:           .asciz    "Drive "
+strDriveBusy:       .asciz    ": busy (bit 7) stuck high.   Status = "
+strDriveNotReady:   .asciz    ": ready (bit 6) stuck low.  Status = "
+strWriteFault:      .asciz    ": write fault.    Status = "
+strUnknownStatus:   .asciz    ": unknown error in status register.   Status = "
+strSectorNotFound:  .asciz    ": sector not found. Error Register = "
+strBadBlock:        .asciz    ": bad Sector ID.    Error Register = "
+strUncorrectable:   .asciz    ": uncorrectable data error.  Error Register = "
+strInvalidCmd:      .asciz    ": invalid Command. Error Register = "
+strTrackZero:       .asciz    ": track Zero not found. Error Register = "
+strUnknownError:    .asciz    ": unknown Error. Error Register = "

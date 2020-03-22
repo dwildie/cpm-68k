@@ -1,8 +1,8 @@
-                    .global   loadRecordFile
-
                     .include  "include/macros.i"
                     .include  "include/ascii.i"
 
+                    .global   loadRecordFile
+                    
 MAX_REC_SIZE        =         0x100
 MAX_DATA_SIZE       =         0x80
 
@@ -24,14 +24,14 @@ loadRecordFile:     LINK      %FP,#0
 
                     MOVE.L    8(%FP),-(%SP)
                     BSR       fOpen
-                    ADDQ.L    #4,%SP                        | Clean up stack
-                    BNE       3f                            | Error, could not open file
+                    ADDQ.L    #4,%SP                                  | Clean up stack
+                    BNE       3f                                      | Error, could not open file
 
                     CLR.W     dataRecordCount
-1:                  BSR       readRecord                    | Read every record in the file
+1:                  BSR       readRecord                              | Read every record in the file
                     BEQ       1b
 
-2:                  CMPI.B    #1,%D0                        | 1 is end of file, so return 0
+2:                  CMPI.B    #1,%D0                                  | 1 is end of file, so return 0
                     BNE       3f
                     MOVE.B    #0,%D0
 
@@ -42,135 +42,135 @@ loadRecordFile:     LINK      %FP,#0
 * Read one record from the file, validate and process
 *-----------------------------------------------------------------------------------------------------
 readRecord:         LINK      %FP,#-(MAX_DATA_SIZE+MAX_REC_SIZE)
-                    LEA       -(MAX_DATA_SIZE+MAX_REC_SIZE)(%FP),%A1 | Ascii record buffer
-                    LEA       -MAX_REC_SIZE(%FP),%A2        | Data buffer
 
-1:                  MOVE.L    %A1,-(%SP)                    | Skip any leading CR or LF chars
+                    LEA       -(MAX_DATA_SIZE+MAX_REC_SIZE)(%FP),%A1  | Ascii record buffer
+                    LEA       -MAX_REC_SIZE(%FP),%A2                  | Data buffer
+
+1:                  MOVE.L    %A1,-(%SP)                              | Skip any leading CR or LF chars
                     MOVE.W    #1,-(%SP)
                     BSR       fRead
                     ADDQ.L    #6,%SP
-                    BEQ       eof                           | No more chars ? must be end of file
+                    BEQ       eof                                     | No more chars ? must be end of file
 
-                    CMPI.B    #CTRLZ,(%A1)                  | Ctrl-Z = end of file
+                    CMPI.B    #CTRLZ,(%A1)                            | Ctrl-Z = end of file
                     BEQ       eof
-                    CMPI.B    #0,(%A1)                      | Null = end of file
+                    CMPI.B    #0,(%A1)                                | Null = end of file
                     BEQ       eof
                     CMPI.B    #CR,(%A1)
                     BEQ       1b
                     CMPI.B    #LF,(%A1)
                     BEQ       1b
 
-                    CMPI.B    #'S',(%A1)                    | First char must be an 'S'
+                    CMPI.B    #'S',(%A1)                              | First char must be an 'S'
                     BNE       errUnexpectedChar
 
-                    CLR.B     %D4                           | Use D4 for the checksum
+                    CLR.B     %D4                                     | Use D4 for the checksum
 
-                    MOVE.L    %A1,-(%SP)                    | Read next three chars, type + size
+                    MOVE.L    %A1,-(%SP)                              | Read next three chars, type + size
                     MOVE.W    #3,-(%SP)
                     BSR       fRead
                     ADDQ.L    #6,%SP
-                    CMPI.B    #3,%D0                        | Check that we got three chars
+                    CMPI.B    #3,%D0                                  | Check that we got three chars
                     BNE       errUnexpectedEOF
 
-                    MOVE.B    (%A1),%D5                     | Record type
+                    MOVE.B    (%A1),%D5                               | Record type
 
-                    PEA       1(%A1)                        | Convert the size to a byte value
+                    PEA       1(%A1)                                  | Convert the size to a byte value
                     BSR       asciiToByte
                     ADDQ.L    #4,%SP
 
-                    ADD.B     %D0,%D4                       | Size is included in the checksum
+                    EXT.W     %D0                                     | To word
+                    ADD.B     %D0,%D4                                 | Size is included in the checksum
 
-                    MOVE.B    %D0,%D2                       | Save byte count in %D2
-                    CLR.W     %D3                           | D3 is word size
-                    MOVE.B    %D0,%D3                       | Remaining char count Which is twice the byte count
+                    MOVE.W    %D0,%D2                                 | Save byte count in %D2
+                    MOVE.W    %D0,%D3                                 | Remaining char count Which is twice the byte count
                     LSL.W     #1,%D3
 
-                    CMPI.B    #'2',%D5                      | A S2 record has a three byte (24bit) address
-                    BNE       6f                            | This would prevent 16bit reads on the hex data
-SR4:                MOVE.B    #0x00,(%A2)+                  | Insert a null byte to preserve the 16 bit alignment
+                    CMPI.B    #'2',%D5                                | A S2 record has a three byte (24bit) address
+                    BNE       6f                                      | This would prevent 16bit reads on the hex data
+SR4:                MOVE.B    #0x00,(%A2)+                            | Insert a null byte to preserve the 16 bit alignment
 
-6:                  MOVE.L    %A1,-(%SP)                    | Read remaining chars, address + data + checksum
+6:                  MOVE.L    %A1,-(%SP)                              | Read remaining chars, address + data + checksum
                     MOVE.W    %D3,-(%SP)
                     BSR       fRead
                     ADDQ.L    #6,%SP
-                    CMP.B     %D3,%D0                       | Check that we got all the chars
-                    BNE       errUnexpectedEOF
+                    CMP.B     %D3,%D0                                 | Check that we got all the chars
+SR0:                BNE       errUnexpectedEOF
 
-SR1:                CLR.W     %D3
-                    MOVE.B    %D2,%D3                       | Use D3 as the loop counter
-                    SUBI.W    #2,%D3                        | Exclude the checksum, less one for DBRA
+SR1:                MOVE.W    %D2,%D3                                 | Use D3 as the loop counter
+                    SUBI.W    #2,%D3                                  | Exclude the checksum, less one for DBRA
 
-2:                  PEA       (%A1)                         | Convert each ascii pair to byte value and store in data buffer
+2:                  PEA       (%A1)                                   | Convert each ascii pair to byte value and store in data buffer
                     BSR       asciiToByte
                     ADDQ.L    #4,%SP
-SR2:                ADD.B     %D0,%D4                       | Add to the checksum
-                    MOVE.B    %D0,(%A2)+                    | Move to the data buffer
+SR2:                ADD.B     %D0,%D4                                 | Add to the checksum
+                    MOVE.B    %D0,(%A2)+                              | Move to the data buffer
                     ADD.L     #2,%A1
                     DBRA      %D3,2b
 
-                    PEA       (%A1)                         | Get the checksum
-                    BSR       asciiToByte                   | The actual checksum is in %D0
+SR5:                PEA       (%A1)                                   | Get the checksum
+                    BSR       asciiToByte                             | The actual checksum is in %D0
                     ADDQ.L    #4,%SP
-                    NOT.B     %D4                           | Calculated checksum is in %D4
-                    CMP.B     %D0,%D4                       | Must be the same
+                    NOT.B     %D4                                     | Calculated checksum is in %D4
+                    CMP.B     %D0,%D4                                 | Must be the same
                     BNE       errChecksum
 
-                    SUBQ.W    #1,%D2                        | Call the relevant subroutine to process the record
+                    SUBQ.W    #1,%D2                                  | Call the relevant subroutine to process the record
 
-                    CMPI.B    #'0',%D5                      | S0 Header record
+                    CMPI.B    #'0',%D5                                | S0 Header record
                     BNE       3f
-                    PEA       -MAX_REC_SIZE(%FP)            | Data buffer
-                    MOVE.W    %D2,-(%SP)                    | Data size
+                    PEA       -MAX_REC_SIZE(%FP)                      | Data buffer
+                    MOVE.W    %D2,-(%SP)                              | Data size
                     BSR       processHeader
                     ADDQ.L    #6,%SP
                     BRA       9f
 
-3:                  CMPI.B    #'3',%D5                      | S1,S2,S3 Data records
+3:                  CMPI.B    #'3',%D5                                | S1,S2,S3 Data records
                     BGT       4f
-                    PEA       -MAX_REC_SIZE(%FP)            | Data buffer
-                    MOVE.W    %D2,-(%SP)                    | Data size
-                    MOVE.W    %D5,-(%SP)                    | Record type
+                    PEA       -MAX_REC_SIZE(%FP)                      | Data buffer
+                    MOVE.W    %D2,-(%SP)                              | Data size
+                    MOVE.W    %D5,-(%SP)                              | Record type
                     BSR       processData
                     ADDQ.L    #8,%SP
                     BRA       9f
 
-4:                  CMPI.B    #'4',%D5                      | S4 Reserved
+4:                  CMPI.B    #'4',%D5                                | S4 Reserved
                     BEQ       errUnknownType
 
-                    CMPI.B    #'6',%D5                      | S5,S6 Count record
+                    CMPI.B    #'6',%D5                                | S5,S6 Count record
                     BGT       5f
-SR3:                PEA       -MAX_REC_SIZE(%FP)            | Data buffer
-                    MOVE.W    %D2,-(%SP)                    | Data size
-                    MOVE.W    %D5,-(%SP)                    | Record type
+SR3:                PEA       -MAX_REC_SIZE(%FP)                      | Data buffer
+                    MOVE.W    %D2,-(%SP)                              | Data size
+                    MOVE.W    %D5,-(%SP)                              | Record type
                     BSR       processCount
                     ADDQ.L    #8,%SP
                     BEQ       9f
-                    BRA       errCount                      | Count mismatch, return an error
+                    BRA       errCount                                | Count mismatch, return an error
 
-5:                  CMPI.B    #'9',%D5
+5:                  CMPI.B    #'9',%D5                                | S9 Start record
                     BGT       errUnknownType
-                    PEA       -MAX_REC_SIZE(%FP)            | Data buffer
-                    MOVE.W    %D2,-(%SP)                    | Data size
-                    MOVE.W    %D5,-(%SP)                    | Record type
+                    PEA       -MAX_REC_SIZE(%FP)                      | Data buffer
+                    MOVE.W    %D2,-(%SP)                              | Data size
+                    MOVE.W    %D5,-(%SP)                              | Record type
                     BSR       processStart
                     ADDQ.L    #8,%SP
-                    BRA       9f
+                    BRA       eof
 
-9:                  MOVE.B    #0,%D0                        | Return SUCCESS
+9:                  MOVE.B    #0,%D0                                  | Return SUCCESS
                     BRA       ret
 
-eof:                MOVE.B    #1,%D0                        | Return 1 end of file
+eof:                MOVE.B    #1,%D0                                  | Return 1 end of file
                     BRA       ret
 
-errUnexpectedChar:  PUTS      strExpectedS                  | Error, unexpected character
+errUnexpectedChar:  PUTS      strExpectedS                            | Error, unexpected character
                     MOVE.B    (%A1),%D0
                     BSR       writeHexByte
                     BSR       newLine
-                    MOVE.B    #2,%D0                        | Return error 2
+                    MOVE.B    #2,%D0                                  | Return error 2
                     BRA       ret
 
-errUnexpectedEOF:   PUTS      strUnexpectedEOF              | Unexpected end of file
-                    MOVE.B    #3,%D0                        | Return error 3
+errUnexpectedEOF:   PUTS      strUnexpectedEOF                        | Unexpected end of file
+                    MOVE.B    #3,%D0                                  | Return error 3
                     BRA       ret
 
 errChecksum:        PUTS      strChecksum1
@@ -179,14 +179,14 @@ errChecksum:        PUTS      strChecksum1
                     MOVE.B    %D4,%D0
                     BSR       writeHexByte
                     BSR       newLine
-                    MOVE.B    #4,%D0                        | Return error 4
+                    MOVE.B    #4,%D0                                  | Return error 4
                     BRA       ret
 
 errUnknownType:     PUTS      strUnknownType
                     MOVE.B    %D5,%D0
                     BSR       writeHexByte
                     BSR       newLine
-                    MOVE.B    #5,%D0                        | Return error 5
+                    MOVE.B    #5,%D0                                  | Return error 5
                     BRA       ret
 
 errCount:           MOVE.B    #6,%D0
@@ -202,25 +202,23 @@ ret:                UNLK      %FP
 processHeader:      LINK      %FP,#0
                     MOVEM.L   %D1/%A1,-(%SP)
 
-                    MOVE.W    0x08(%FP),%D1                 | Number of data bytes
-                    MOVE.L    0x0A(%FP),%A1                 | Buffer address
+                    MOVE.W    0x08(%FP),%D1                           | Number of data bytes
+                    MOVE.L    0x0A(%FP),%A1                           | Buffer address
 
-                    TST.W     %D1                           | Skip if no chars
+                    TST.W     %D1                                     | Skip if no chars
                     BEQ       3f
-
-                    SUB.W     #1,%D1                        | Less one for DBRA
 
                     PUTS      strHeader
 
+                    BRA       2f                                      | start at bottom of loop
 1:                  MOVE.B    (%A1)+,%D0
                     BEQ       2f
                     BSR       writeCh
-
 2:                  DBRA      %D1,1b
 
-                    PUTS      strReading
+3:                  PUTS      strReading
 
-3:                  MOVEM.L   (%SP)+,%D1/%A1
+                    MOVEM.L   (%SP)+,%D1/%A1
                     UNLK      %FP
                     RTS
 
@@ -229,35 +227,35 @@ processHeader:      LINK      %FP,#0
 *-----------------------------------------------------------------------------------------------------
 processData:        LINK      %FP,#0
 
-                    MOVE.W    0x08(%FP),%D0                 | Record type
-                    MOVE.W    0x0A(%FP),%D1                 | Number of data bytes
-                    MOVE.L    0x0C(%FP),%A1                 | Buffer address
+                    MOVE.W    0x08(%FP),%D0                           | Record type
+                    MOVE.W    0x0A(%FP),%D1                           | Number of data bytes
+                    MOVE.L    0x0C(%FP),%A1                           | Buffer address
 
-                    ADDQ.W    #1,dataRecordCount            | Increment the data record count, used to validate S5 or S6
+                    ADDQ.W    #1,dataRecordCount                      | Increment the data record count, used to validate S5 or S6
 
-                    CLR.L     %D2                           | Use D2 for the address
+                    CLR.L     %D2                                     | Use D2 for the address
 
-                    CMPI.B    #'3',%D0                      | S3 is a 32 bit address
+                    CMPI.B    #'3',%D0                                | S3 is a 32 bit address
                     BNE       1f
-                    MOVE.W    (%A1)+,%D2                    | Upper word
+                    MOVE.W    (%A1)+,%D2                              | Upper word
                     SWAP      %D2
-                    SUBQ.W    #2,%D1                        | Decrement byte count by 2
+                    SUBQ.W    #2,%D1                                  | Decrement byte count by 2
                     BRA       2f
 
-1:                  CMPI.B    #'2',%D0                      | S2 is a 24 bit address, padded with a null upper byte to prerve 16bit alignment
+1:                  CMPI.B    #'2',%D0                                | S2 is a 24 bit address, padded with a null upper byte to prerve 16bit alignment
                     BNE       2f
-PD3:                MOVE.W    (%A1)+,%D2                    | null upper byte and lower byte of upper word
+PD3:                MOVE.W    (%A1)+,%D2                              | null upper byte and lower byte of upper word
                     SWAP      %D2
-                    SUBQ.W    #1,%D1                        | Decrement byte count by 1, the padding byte is not counted
+                    SUBQ.W    #1,%D1                                  | Decrement byte count by 1, the padding byte is not counted
 
-2:                  MOVE.W    (%A1)+,%D2                    | S1,S2 & S3, Lower word
-                    SUBQ.W    #2,%D1                        | Decrement byte count by 2
+2:                  MOVE.W    (%A1)+,%D2                              | S1,S2 & S3, Lower word
+                    SUBQ.W    #2,%D1                                  | Decrement byte count by 2
 
-                    SUBQ.W    #1,%D1                        | Byte count, Less one for DBRA
-                    MOVE.L    %D2,%A2                       | Target address
+                    SUBQ.W    #1,%D1                                  | Byte count, Less one for DBRA
+                    MOVE.L    %D2,%A2                                 | Target address
 
-                                                            | TODO Update to 16 or 32 bit transfer
-3:                  MOVE.B    (%A1)+,(%A2)+                 | Transfer each byte into memory
+                                                                      | TODO Update to 16 or 32 bit transfer
+3:                  MOVE.B    (%A1)+,(%A2)+                           | Transfer each byte into memory
                     DBRA      %D1,3b
 
                     ANDI.L    #0x7FF,%D2
@@ -272,19 +270,19 @@ PD3:                MOVE.W    (%A1)+,%D2                    | null upper byte an
 *-----------------------------------------------------------------------------------------------------
 processCount:       LINK      %FP,#0
 
-                    MOVE.W    0x08(%FP),%D0                 | Record type
-                    MOVE.W    0x0A(%FP),%D1                 | Number of data bytes
-                    MOVE.L    0x0C(%FP),%A1                 | Buffer address
+                    MOVE.W    0x08(%FP),%D0                           | Record type
+                    MOVE.W    0x0A(%FP),%D1                           | Number of data bytes
+                    MOVE.L    0x0C(%FP),%A1                           | Buffer address
 
                     CLR.L     %D2
 
                     CMPI.B    #'6',%D0
                     BNE       1f
 
-                    MOVE.B    (%A1)+,%D2                    | 24bit value, read lower byte of upper word
+                    MOVE.B    (%A1)+,%D2                              | 24bit value, read lower byte of upper word
                     SWAP      %D2
 
-1:                  MOVE.W    (%A1),%D2                     | 16bit value
+1:                  MOVE.W    (%A1),%D2                               | 16bit value
                     MOVE.W    dataRecordCount,%D3
                     CMP.W     %D2,%D3
                     BEQ       2f
@@ -313,33 +311,35 @@ processCount:       LINK      %FP,#0
 *-----------------------------------------------------------------------------------------------------
 processStart:       LINK      %FP,#0
 
-                    MOVE.W    0x08(%FP),%D0                 | Record type
-                    MOVE.W    0x0A(%FP),%D1                 | Number of data bytes
-                    MOVE.L    0x0C(%FP),%A1                 | Buffer address
+                    BSR       fClose                                  | Close the file
 
-                    CLR.L     %D2                           | Will hold the start address
+                    MOVE.W    0x08(%FP),%D0                           | Record type
+                    MOVE.W    0x0A(%FP),%D1                           | Number of data bytes
+                    MOVE.L    0x0C(%FP),%A1                           | Buffer address
 
-                    CMPI.B    #'7',%D0                      | S7 has 32bit address
+                    CLR.L     %D2                                     | Will hold the start address
+
+                    CMPI.B    #'7',%D0                                | S7 has 32bit address
                     BNE       1f
-                    MOVE.W    (%A1)+,%D2                    | Read high word
+                    MOVE.W    (%A1)+,%D2                              | Read high word
                     SWAP      %D2
                     BRA       2f
 
-1:                  CMPI.B    #'8',%D0                      | S8 has 24bit address
+1:                  CMPI.B    #'8',%D0                                | S8 has 24bit address
                     BNE       2f
-                    MOVE.B    (%A1)+,%D2                    | Lower byte of upper word
+                    MOVE.B    (%A1)+,%D2                              | Lower byte of upper word
                     SWAP      %D2
                     BRA       2f
 
-2:                  MOVE.W    (%A1),%D2                     | Lower word for S7,S8 & S9
+2:                  MOVE.W    (%A1),%D2                               | Lower word for S7,S8 & S9
 
-                    PUTS      strStartAddress               | Display the start address and prompt
+                    PUTS      strStartAddress                         | Display the start address and prompt
                     MOVE.L    %D2,%D0
                     BSR       writeHexLong
                     BSR       newLine
                     PUTS      strProceed
 
-                    BSR       readCh                        | Get user response
+                    BSR       readCh                                  | Get user response
                     MOVE.B    %D0,%D1
                     BSR       toUpperChar
                     CMPI.B    #'Y',%D1
@@ -348,7 +348,7 @@ processStart:       LINK      %FP,#0
                     PUTS      strBooting
 
                     MOVE.L    %D2,%A0
-boot:               JMP       (%A0)                         | Good luck!
+boot:               JMP       (%A0)                                   | Good luck!
 
 3:                  UNLK      %FP
                     RTS

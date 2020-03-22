@@ -1,0 +1,2 @@
+lo68 -r -o b:cpm.rel -ucpm cpmlib b:bios.o b:buffer.o b:biosend.o
+
