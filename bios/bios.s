@@ -27,15 +27,6 @@ in_2:               LEA       handler,%A0
                     MOVE.L    %A0,TRAP_3                              | set up trap #3 handler
                     BSR       initBuffers                             | Initialise the disk buffers
 
-*          .ifne               _CPM_
-*
-*                    LEA.L     bssEnd,%A0                              | Setup the memory table
-*                    MOVE.L    %A0,tpaStart
-*                    MOVE.L    #MEM_END,%D0
-*                    SUB.L     tpaStart,%D0
-*                    MOVE.L    %D0,tpaSize
-*          .endif
-
                     MOVE.W    #0x0D,%D1
                     BSR       conOut
                     MOVE.W    #0x0A,%D1
@@ -322,17 +313,10 @@ selSector:          .word     0
 selDrive:           .byte     0xff                                    | drive requested by selDisk
 
                     .even
-          .ifne               _GNU_
-memTable:           .word     1                                       | 1 memory region - TPA only
-                    .long     __memory_region_start__                 | Start of the Transient Program Area
-                    .long     __memory_region_length__                | Size of the Transient Program Area
-          .endif
-
-          .ifne               _CPM_
 memTable:           .word     1                                       | 1 memory region - TPA only
 tpaStart:           .long     0x100000                                | Default: Start of the Transient Program Area
 tpaSize:            .long     0xECFFFF                                | Default: Size of the Transient Program Area
-          .endif
+
 *-----------------------------------------------------------------------------------------------------
 * disk parameter headers
 *-----------------------------------------------------------------------------------------------------
@@ -476,11 +460,11 @@ allocV9:            DS.B      2048
                     .even
 
           .ifne               _GNU_
-strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.0.G1 Initialisation"
+strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.0 [GNU]"
           .endif
 
           .ifne               _CPM_
-strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.0.C1 Initialisation"
+strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.0 [CPM]"
           .endif
 
                     DC.B      0
