@@ -29,3 +29,5 @@ reloc format.rel format.68k
 reloc term.rel term.68k
 
 reloc config.rel config.68k
+
+as68 -I AS68INIT

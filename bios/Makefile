@@ -13,7 +13,7 @@ CCFLAGS += -nodefaultlibs
 
 LD       = m68k-elf-ld
 
-all: target/bios.srec obj/ldr.srec target/ldbios.s target/bios.s target/buffer.s target/biosend.s
+all: target/bios.srec obj/ldr.srec target/ldbios.s target/bios.s target/buffer.s
 
 %.s:	%.c
 	$(CC) $(CCFLAGS) -S $<
@@ -24,13 +24,13 @@ all: target/bios.srec obj/ldr.srec target/ldbios.s target/bios.s target/buffer.s
 obj/%.o: %.s
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
-obj/bios.srec: obj/bios.o obj/buffer.o obj/biosend.o
+obj/bios.srec: obj/bios.o obj/buffer.o
 	$(LD) -T bios.lnk obj/bios.o obj/buffer.o -Map $(@:.srec=.map) -o $@
 
 obj/ldr.srec: obj/ldbios.o
 
 target/bios.srec: obj/bios.srec
-	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K S100 V0.1.0 Bios" -o $@
+	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K S100 V0.1.1 BIOS" -o $@
 	srec_info $@
 
 target/%.s: %.s

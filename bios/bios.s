@@ -7,7 +7,6 @@
                     .global   write,read                              | *** DEBUG
                     .global   _end                                    | End of CPM
                     .global   _ccp
-                    .global   bssEnd
 
 *--------------------------------------------------------------------------------
 * Function 0: Initialisation
@@ -460,11 +459,11 @@ allocV9:            DS.B      2048
                     .even
 
           .ifne               _GNU_
-strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.0 [GNU]"
+strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.1 [GNU]"
           .endif
 
           .ifne               _CPM_
-strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.0 [CPM]"
+strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.1 [CPM]"
           .endif
 
                     DC.B      0
