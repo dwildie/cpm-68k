@@ -5,12 +5,12 @@ CPM_ZIP         := 68kv1_3.zip
 CMDS		    := ./cmds
 BIOS_DIR        := ../bios
 BIOS_TARGET     := $(BIOS_DIR)/target
-BIOS_SRC        := $(BIOS_TARGET)/bios.s $(BIOS_TARGET)/biosend.s $(BIOS_TARGET)/ldbios.s $(BIOS_TARGET)/buffer.s $(BIOS_DIR)/PUTBOOT.S
+BIOS_SRC        := $(BIOS_TARGET)/bios.s $(BIOS_TARGET)/ldbios.s $(BIOS_TARGET)/buffer.s $(BIOS_DIR)/PUTBOOT.S
 BIOS_SUB        := $(BIOS_DIR)/sub/*.sub
 BIOS_FILE       := $(BIOS_DIR)/target/bios.srec
 BOOT_FILE       := $(DIR_TARGET)/boot400.sr
 BOOT_START_ADDR := 0x400
-BOOT_HEADER     := "CP/M-68K S100 V0.1.0"
+BOOT_HEADER     := $(shell srec_info $(BIOS_FILE) | grep "^Header:" | sed 's/^Header: "\(.*\)"/\1/')
 
 MD    := mkdir
 RM    := rm
@@ -53,7 +53,7 @@ $(DIR_TARGET)/drive_c.img: $(DIR_TARGET)
 	$(SHELL) $(CMDS)/formatImage.sh $@ 4mb-hd
 	
 $(BOOT_FILE): $(BIOS_FILE) $(DIR_TARGET)/cpm400.sr
-	cat $(DIR_TARGET)/cpm400.sr | sed -n '/\x1a/q;p' | grep -v "^S9" | srec_cat $(BIOS_FILE) - -header $(BOOT_HEADER) -execution-start-address=$(BOOT_START_ADDR) > $@
+	cat $(DIR_TARGET)/cpm400.sr | sed -n '/\x1a/q;p' | grep -v "^S9" | srec_cat $(BIOS_FILE) - -header "$(BOOT_HEADER)" -execution-start-address=$(BOOT_START_ADDR) > $@
 	unix2dos $@
 
 $(DIR_TARGET)/cpm400.sr: $(CPM_SOURCE)/DISK9/CPM400.SR

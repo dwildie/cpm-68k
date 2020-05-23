@@ -3,8 +3,14 @@
                     .include  "include/ide.i"
 
 MAX_FAT_VDISKS      =         10                                      | Max number of virtual disks
+MAX_OPEN_FAT        =         4                                       | Maximum number of disks open concurrently, must be <= max open files in libfat
 SEEK_SET            =         0                                       | Seek from the begining
 HDD_SECT_MULU_SHIFT =         9                                       | The number of places to left shift to multiply by HDD_SECTOR_SIZE
+
+TBL_FAT_ID_OFF      =         0x0                                     | Offset into a table record for the identifier
+TBL_FAT_FILE_OFF    =         0x2                                     | Offset into a table record for the file*
+TBL_FAT_LRU_OFF     =         0x6                                     | Offset into a table record for the LRU sequence
+TBL_FAT_SIZE        =         0xa                                     | Table record size
 
 *-----------------------------------------------------------------------------------------------------
                     .bss
@@ -14,7 +20,8 @@ D_PARTITION_ID:     ds.w      1
 D_FILESYS_TYPE:     ds.w      1
 D_PARTITION_OFFSET: ds.l      1
 
-D_FAT_FILES:        ds.l      MAX_FAT_VDISKS
+TBL_FAT:            ds.b      MAX_OPEN_FAT * TBL_FAT_SIZE             | FAT Drive-File table
+D_SEQ_LRU:          ds.l      1                                       | FAT master LRU sequence
 
 *-----------------------------------------------------------------------------------------------------
                     .data
@@ -36,7 +43,7 @@ D_FAT_NAMES:        .long     strDriveA
                     .global   initDisks
                     .global   readDiskSector
                     .global   writeDiskSector
-                    .global   openVDisk                               | **** DEBUG
+                    .global   openVDisk,ovd1                          | **** DEBUG
 
 *-----------------------------------------------------------------------------------------------------
 * initDisks()
@@ -309,31 +316,115 @@ readVDisk:          LINK      %FP,#-4
 *---------------------------------------------------------------------------------------------------------
 * openVDisk(word diskIndex)
 *---------------------------------------------------------------------------------------------------------
-openVDisk:          LINK      %FP,#-4                                 | Local variable for offset
+*openVDisk:          LINK      %FP,#-4                                 | Local variable for offset
+*
+*                    MOVE.W    0x08(%FP),%D0                           | Calculate disk index offset
+*                    EXT.L     %D0                                     | To long
+*                    LSL.L     #2,%D0                                  | x 4
+*                    MOVE.L    %D0,-4(%FP)                             | Save
+*
+*                    LEA       D_FAT_FILES,%A0                         | Check if disk is already opened
+*                    ADD.L     %D0,%A0
+*                    MOVE.L    (%A0),%D0
+*                    BNE       1f                                      | Disk is open
+*
+*                    PEA       strFileMode                             | Param - mode
+*                    LEA       D_FAT_NAMES,%A0
+*                    ADD.L     -4(%FP),%A0
+*                    MOVE.L    (%A0),-(%SP)                            | Param - file name
+*                    BSR       fl_fopen
+*                    ADD       #0x08,%SP
+*
+*                    LEA       D_FAT_FILES,%A0                         | save File*
+*                    MOVE.L    -4(%FP),%D1
+*                    ADD.L     %D1,%A0
+*                    MOVE.L    %D0,(%A0)
+*
+*1:                  UNLK      %FP
+*                    RTS
 
-                    MOVE.W    0x08(%FP),%D0                           | Calculate disk index offset
-                    EXT.L     %D0                                     | To long
-                    LSL.L     #2,%D0                                  | x 4
-                    MOVE.L    %D0,-4(%FP)                             | Save
+*---------------------------------------------------------------------------------------------------------
+* openVDisk(word diskIndex)
+*---------------------------------------------------------------------------------------------------------
+openVDisk:          LINK      %FP,#-2                                 | Local variable for drive id
+                    MOVEM.L   %D1-%D5/%A2,-(%SP)
 
-                    LEA       D_FAT_FILES,%A0                         | Check if disk is already opened
-                    ADD.L     %D0,%A0
-                    MOVE.L    (%A0),%D0
-                    BNE       1f                                      | Disk is open
+                    MOVE.W    0x08(%FP),%D0                           | Calculate disk identifier
+                    ADD.W     #'A',%D0
+                    AND.W     #0xFF,%D0
+                    MOVE.W    %D0,-2(%FP)                             | Save it
+
+                    /* Look for a record with the same identifier */
+ovd1:               LEA       TBL_FAT,%A2                             | FAT Table base
+                    MOVE.W    #0x0,%D1                                | First table record index
+                    MOVE.W    #0x0,%D2                                | First table record offset
+
+1:                  CMP.W     TBL_FAT_ID_OFF(%A2,%D2.W),%D0
+                    BEQ       7f                                      | Found it
+
+                    ADDI.W    #TBL_FAT_SIZE,%D2                       | Next record                  
+                    ADDQ.W    #1,%D1                                  | Increment index
+                    CMPI.W    #MAX_OPEN_FAT,%D1
+                    BLT       1b
+
+                    /* We didn't find it so look for an empty slot */
+                    MOVE.W    #0x0,%D1                                | First table record index
+                    MOVE.W    #0x0,%D2                                | First table record offset
+
+3:                  TST.W     TBL_FAT_ID_OFF(%A2,%D2.W)
+                    BEQ       6f                                      | Use this empty slot
+
+                    ADDI.W    #TBL_FAT_SIZE,%D2                       | Next record                  
+                    ADDQ.W    #1,%D1                                  | Increment index
+                    CMPI.W    #MAX_OPEN_FAT,%D1
+                    BLT       3b
+
+                    /* We didn't find an empty slot find the least recently used slot and close the file */
+                    MOVE.W    #0x1,%D1                                | Second table record index
+                    MOVE.W    #TBL_FAT_SIZE,%D2                       | Second table record offset
+                    MOVE.W    #0x0,%D3                                | First table record is initial LRU - index
+                    MOVE.W    #0x0,%D4                                | First table record is initial LRU - offset
+
+4:                  MOVE.L    TBL_FAT_LRU_OFF(%A2,%D2.W),%D5
+                    CMP.L     TBL_FAT_LRU_OFF(%A2,%D4.W),%D5          | Is this slot's LRU less than current?
+                    BGE       5f                                      | No
+
+                    MOVE.W    %D1,%D3                                 | Yes, this slot is now current LRU
+                    MOVE.L    %D2,%D4
+
+5:                  ADDQ.W    #1,%D1                                  | Increment index
+                    ADDI.W    #TBL_FAT_SIZE,%D2                       | Next record                  
+                    CMPI.W    #MAX_OPEN_FAT,%D1
+                    BLT       4b
+                    MOVE.W    %D3,%D1
+                    MOVE.W    %D4,%D2
+
+                    /* %D1 is the index to the LRU slot, %D2 is the offset, close the file */
+                    MOVE.L    TBL_FAT_FILE_OFF(%A2,%D2.W),-(%SP)      | Param - file*
+                    BSR       fl_fclose                               | Close the file
+                    ADD       #0x04,%SP
+                    MOVE.L    #0,TBL_FAT_FILE_OFF(%A2,%D2.W)
+
+                    /* %D1 is the index to an empty slot, %D2 is the offset, open the file */
+6:                  MOVE.W    -2(%FP),TBL_FAT_ID_OFF(%A2,%D2.W)       | Set the records drive identifier
 
                     PEA       strFileMode                             | Param - mode
-                    LEA       D_FAT_NAMES,%A0
-                    ADD.L     -4(%FP),%A0
-                    MOVE.L    (%A0),-(%SP)                            | Param - file name
+                    LEA       D_FAT_NAMES,%A1
+                    MOVE.W    0x08(%FP),%D0                           | Calculate offset into file name list
+                    LSL.W     #2,%D0
+                    MOVE.L    (%A1,%D0.W),-(%SP)                      | Param - file name
                     BSR       fl_fopen
                     ADD       #0x08,%SP
 
-                    LEA       D_FAT_FILES,%A0                         | save File*
-                    MOVE.L    -4(%FP),%D1
-                    ADD.L     %D1,%A0
-                    MOVE.L    %D0,(%A0)
+                    MOVE.L    %D0,TBL_FAT_FILE_OFF(%A2,%D2.W)
 
-1:                  UNLK      %FP
+7:                  ADDQ.L    #1,D_SEQ_LRU                            | Increment LRU seq
+                    MOVE.L    D_SEQ_LRU,TBL_FAT_LRU_OFF(%A2,%D2.W)
+
+                    MOVE.L    TBL_FAT_FILE_OFF(%A2,%D2.W),%D0         | Return the file pointer
+
+ret:                MOVEM.L   (%SP)+,%D1-%D5/%A2
+                    UNLK      %FP
                     RTS
 
 *---------------------------------------------------------------------------------------------------------

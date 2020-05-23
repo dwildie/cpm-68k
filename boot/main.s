@@ -50,7 +50,7 @@ _start:             MOVEA.L   #__bss_start__, %A0                     | Zero bss
                     .align(2)
                     .global   strID
 
-strID:              .asciz    "CP/M-68K S100 Boot Loader V0.1.0\n\r"
+strID:              .asciz    "CP/M-68K S100 Boot Loader V0.1.1\n\r"
 
 *---------------------------------------------------------------------------------------------------------
                     .data
