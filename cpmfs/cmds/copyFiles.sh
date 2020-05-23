@@ -1,7 +1,7 @@
 #!/bin/bash
 
 usage() {
-  echo "Usage: $0 <image_file> <partition> <file1> ..."
+  echo "Usage: $0 <image_file> <disk-def> <file1> ..."
 }
 
 if [ $# -lt 3 ]; then
@@ -10,17 +10,15 @@ if [ $# -lt 3 ]; then
 fi
 
 IMAGE=$1
-PARTITION=$2
-
-FMT=4mb-hd
+DEF=$2
 
 args=("$@")
 
 n=2
 while [ $n -lt $# ]
 do
-  echo "Copying ${args[$n]} to $IMAGE, partition $PARTITION"
-  cpmcp -f ${FMT}-${PARTITION} $IMAGE ${args[$n]} 0:
+  echo "Copying ${args[$n]} to $IMAGE, definition $DEF"
+  cpmcp -f ${DEF} $IMAGE ${args[$n]} 0:
   
   n=$(( $n + 1))
 done

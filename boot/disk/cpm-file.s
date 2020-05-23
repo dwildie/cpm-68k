@@ -322,7 +322,7 @@ formatName:         LINK      %FP,#0
 
                     .global   blockArray,blockCount,recordCount
 
-maxFileBlocks       =         0x256
+maxFileBlocks       =         256
 maxFileExtents      =         maxFileBlocks / 8
 extentsArrayBytes   =         maxFileExtents * 2                      | (extent is word)
 

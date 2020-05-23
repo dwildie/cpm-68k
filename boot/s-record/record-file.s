@@ -2,7 +2,7 @@
                     .include  "include/ascii.i"
 
                     .global   loadRecordFile
-                    
+
 MAX_REC_SIZE        =         0x100
 MAX_DATA_SIZE       =         0x80
 
@@ -88,27 +88,27 @@ readRecord:         LINK      %FP,#-(MAX_DATA_SIZE+MAX_REC_SIZE)
 
                     CMPI.B    #'2',%D5                                | A S2 record has a three byte (24bit) address
                     BNE       6f                                      | This would prevent 16bit reads on the hex data
-SR4:                MOVE.B    #0x00,(%A2)+                            | Insert a null byte to preserve the 16 bit alignment
+                    MOVE.B    #0x00,(%A2)+                            | Insert a null byte to preserve the 16 bit alignment
 
 6:                  MOVE.L    %A1,-(%SP)                              | Read remaining chars, address + data + checksum
                     MOVE.W    %D3,-(%SP)
                     BSR       fRead
                     ADDQ.L    #6,%SP
                     CMP.B     %D3,%D0                                 | Check that we got all the chars
-SR0:                BNE       errUnexpectedEOF
+                    BNE       errUnexpectedEOF
 
-SR1:                MOVE.W    %D2,%D3                                 | Use D3 as the loop counter
+                    MOVE.W    %D2,%D3                                 | Use D3 as the loop counter
                     SUBI.W    #2,%D3                                  | Exclude the checksum, less one for DBRA
 
 2:                  PEA       (%A1)                                   | Convert each ascii pair to byte value and store in data buffer
                     BSR       asciiToByte
                     ADDQ.L    #4,%SP
-SR2:                ADD.B     %D0,%D4                                 | Add to the checksum
+                    ADD.B     %D0,%D4                                 | Add to the checksum
                     MOVE.B    %D0,(%A2)+                              | Move to the data buffer
                     ADD.L     #2,%A1
                     DBRA      %D3,2b
 
-SR5:                PEA       (%A1)                                   | Get the checksum
+                    PEA       (%A1)                                   | Get the checksum
                     BSR       asciiToByte                             | The actual checksum is in %D0
                     ADDQ.L    #4,%SP
                     NOT.B     %D4                                     | Calculated checksum is in %D4
@@ -139,7 +139,7 @@ SR5:                PEA       (%A1)                                   | Get the 
 
                     CMPI.B    #'6',%D5                                | S5,S6 Count record
                     BGT       5f
-SR3:                PEA       -MAX_REC_SIZE(%FP)                      | Data buffer
+                    PEA       -MAX_REC_SIZE(%FP)                      | Data buffer
                     MOVE.W    %D2,-(%SP)                              | Data size
                     MOVE.W    %D5,-(%SP)                              | Record type
                     BSR       processCount
@@ -244,7 +244,7 @@ processData:        LINK      %FP,#0
 
 1:                  CMPI.B    #'2',%D0                                | S2 is a 24 bit address, padded with a null upper byte to prerve 16bit alignment
                     BNE       2f
-PD3:                MOVE.W    (%A1)+,%D2                              | null upper byte and lower byte of upper word
+                    MOVE.W    (%A1)+,%D2                              | null upper byte and lower byte of upper word
                     SWAP      %D2
                     SUBQ.W    #1,%D1                                  | Decrement byte count by 1, the padding byte is not counted
 
@@ -329,11 +329,15 @@ processStart:       LINK      %FP,#0
                     BNE       2f
                     MOVE.B    (%A1)+,%D2                              | Lower byte of upper word
                     SWAP      %D2
-                    BRA       2f
+                    MOVE.B    (%A1)+,%D2                              | Upper byte of lower word
+                    LSL.W     #8,%D2
+                    MOVE.B    (%A1)+,%D2                              | Lower byte of lower word
+
+                    BRA       3f
 
 2:                  MOVE.W    (%A1),%D2                               | Lower word for S7,S8 & S9
 
-                    PUTS      strStartAddress                         | Display the start address and prompt
+3:                  PUTS      strStartAddress                         | Display the start address and prompt
                     MOVE.L    %D2,%D0
                     BSR       writeHexLong
                     BSR       newLine
@@ -343,14 +347,14 @@ processStart:       LINK      %FP,#0
                     MOVE.B    %D0,%D1
                     BSR       toUpperChar
                     CMPI.B    #'Y',%D1
-                    BNE       3f
+                    BNE       4f
 
                     PUTS      strBooting
 
                     MOVE.L    %D2,%A0
 boot:               JMP       (%A0)                                   | Good luck!
 
-3:                  UNLK      %FP
+4:                  UNLK      %FP
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
