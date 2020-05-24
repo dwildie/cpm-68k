@@ -1,5 +1,11 @@
-                    .include  "include/propeller.i"
                     .include  "include/ascii.i"
+
+* ----------------------------------------------------------------------------------
+                    .section  .ports.prop
+
+CON_STAT:           ds.b      1
+CON_IO:             ds.b      1
+* ----------------------------------------------------------------------------------
 
                     .text
 
@@ -12,7 +18,7 @@
 * ----------------------------------------------------------------------------------
 * Get a keyboard status in %D0, Z= nothing, 2 = char present
 * ----------------------------------------------------------------------------------
-keystat:            MOVE.B    (CON_STAT),%D0                          | Get a keyboard status in %D0, Z= nothing, 2 = char present
+keystat:            MOVE.B    CON_STAT,%D0                            | Get a keyboard status in %D0, Z= nothing, 2 = char present
                     AND.B     #0x02,%D0
                     TST.B     %D0
                     RTS
@@ -61,12 +67,12 @@ writeStr:           MOVEM.L   %D0-%D1,-(%SP)                          | > Save D
 * ----------------------------------------------------------------------------------
 * Output the chracter in %D1.B
 * ----------------------------------------------------------------------------------
-outch:              MOVE.B    (CON_STAT),%D1                          | Check CRT status is ready to receive character
+outch:              MOVE.B    CON_STAT,%D1                            | Check CRT status is ready to receive character
                     AND.B     #0x04,%D1
                     TST.B     %D1
                     BEQ       outch
 
-                    MOVE.B    %D0,(CON_OUT)                           | Output ASCII (in %D0) to hardware port 01H
+                    MOVE.B    %D0,CON_IO                              | Output ASCII (in %D0) to hardware port 01H
 
                     RTS
 
@@ -76,12 +82,12 @@ outch:              MOVE.B    (CON_STAT),%D1                          | Check CR
 * ----------------------------------------------------------------------------------
 readCh:             MOVE.L    %D1,-(%SP)                              | > Save D1	
 
-1:                  MOVE.B    (CON_STAT),%D1                          | Get the keyboard status in %D1
+1:                  MOVE.B    CON_STAT,%D1                            | Get the keyboard status in %D1
                     AND.B     #0x02,%D1
                     TST.B     %D1                                     | Are we ready
                     BEQ       1b
 
-                    MOVE.B    (CON_IN),%D0                            | Get ASCII (in %D0) from hardware port 01H
+                    MOVE.B    CON_IO,%D0                              | Get ASCII (in %D0) from hardware port 01H
 
                     CMPI.B    #CR,%D0                                 | If char is CR (Enter key), also output a LF
                     BNE       2f

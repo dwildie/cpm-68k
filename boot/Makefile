@@ -49,7 +49,7 @@ SREC_AS_OBJ = $(patsubst s-record/%.s, obj/s-record/%.o, $(SREC_AS_SRC))
 
 OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(IO_AS_OBJ) $(IO_C_OBJ) $(DSK_AS_OBJ) $(DSK_C_OBJ) $(SREC_AS_OBJ) 
 
-all: target/boot.srec 
+all: target/boot.srec target/boot30.srec
 
 obj/io/%.o:	io/%.s
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
@@ -84,16 +84,29 @@ obj/disk/%.o:	disk/%.c
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 # --------------------------------------------------------------------------------
-# M68K CPM Boot Loader
+# M68000 CPM Boot Loader
 # --------------------------------------------------------------------------------
 obj/main.o: main.s
 	$(AS) -m68010 -alms -a=$(@:.o=.lst) -o $@ $<
 
 obj/boot.srec: obj/main.o $(OBS)
-	$(LD) $(LDFLAGS) -T boot.rom.lnk obj/main.o $(OBS) $(LIBS) -Map $(@:.srec=.map) -o $@
+	$(LD) $(LDFLAGS) -T boot.68000.lnk obj/main.o $(OBS) $(LIBS) -Map $(@:.srec=.map) -o $@
 
 target/boot.srec: obj/boot.srec
-	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K Boot Loader" -o $@
+	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68000 Boot Loader" -o $@
+	srec_info $@
+
+# --------------------------------------------------------------------------------
+# M68030 CPM Boot Loader
+# --------------------------------------------------------------------------------
+obj/main30.o: main.s
+	$(AS) -m68010 -alms -a=$(@:.o=.lst) -o $@ $<
+
+obj/boot30.srec: obj/main30.o $(OBS)
+	$(LD) $(LDFLAGS) -T boot.68030.lnk obj/main.o $(OBS) $(LIBS) -Map $(@:.srec=.map) -o $@
+
+target/boot30.srec: obj/boot30.srec
+	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 Boot Loader" -o $@
 	srec_info $@
 
 clean:

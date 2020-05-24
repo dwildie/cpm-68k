@@ -1,11 +1,11 @@
 *-----------------------------------------------------------------------------------------------------
 * i8255 ports
 *-----------------------------------------------------------------------------------------------------
-I8255_PORT_A        =         0x00FF0030                    | lower 8 bits of IDE interface
-I8255_PORT_B        =         I8255_PORT_A + 1              | upper 8 bits of IDE interface
-I8255_PORT_C        =         I8255_PORT_A + 2              | control lines for IDE interface
-I8255_PORT_CTRL     =         I8255_PORT_A + 3              | 8255 configuration port
-I8255_PORT_DRIVE    =         I8255_PORT_A + 4              | To select the 1st or 2nd CF card/drive
+*I8255_PORT_A        =         0x00FF0030                    | lower 8 bits of IDE interface
+*I8255_PORT_B        =         I8255_PORT_A + 1              | upper 8 bits of IDE interface
+*I8255_PORT_C        =         I8255_PORT_A + 2              | control lines for IDE interface
+*I8255_PORT_CTRL     =         I8255_PORT_A + 3              | 8255 configuration port
+*I8255_PORT_DRIVE    =         I8255_PORT_A + 4              | To select the 1st or 2nd CF card/drive
 
 *-----------------------------------------------------------------------------------------------------
 * i8255 configuration

@@ -1,6 +1,17 @@
                     .include  "include/macros.i"
                     .include  "include/ide.i"
 
+*-----------------------------------------------------------------------------------------------------
+                    .section  .ports.ide
+I8255_PORT_A:       ds.b      1                                       | port 30, lower 8 bits of IDE interface
+I8255_PORT_B:       ds.b      1                                       | port 31, upper 8 bits of IDE interface
+I8255_PORT_C:       ds.b      1                                       | port 32, control lines for IDE interface
+I8255_PORT_CTRL:    ds.b      1                                       | port 33, 8255 configuration port
+I8255_PORT_DRIVE:   ds.b      1                                       | port 34, To select the 1st or 2nd CF card/drive
+
+                    .global   I8255_PORT_A,I8255_PORT_DRIVE
+*-----------------------------------------------------------------------------------------------------
+
                     .text
 
                     .global   setIdeLba
@@ -223,7 +234,7 @@ wrSectors:          LINK      %FP,#0
                     MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
                     UNLK      %FP
                     RTS
-                    
+
 *----------------------------------------------------------------------------------------------------
 * Write a number of physical sector to the currently selected drive at the current position
 * %D0 the number of sectors to write
