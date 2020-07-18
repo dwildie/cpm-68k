@@ -87,7 +87,7 @@ obj/disk/%.o:	disk/%.c
 # M68000 CPM Boot Loader
 # --------------------------------------------------------------------------------
 obj/main.o: main.s
-	$(AS) -m68010 -alms -a=$(@:.o=.lst) -o $@ $<
+	$(AS) -m68010 -alms -a=$(@:.o=.lst) --defsym IS_68000=1 -o $@ $<
 
 obj/boot.srec: obj/main.o $(OBS)
 	$(LD) $(LDFLAGS) -T boot.68000.lnk obj/main.o $(OBS) $(LIBS) -Map $(@:.srec=.map) -o $@
@@ -100,10 +100,10 @@ target/boot.srec: obj/boot.srec
 # M68030 CPM Boot Loader
 # --------------------------------------------------------------------------------
 obj/main30.o: main.s
-	$(AS) -m68010 -alms -a=$(@:.o=.lst) -o $@ $<
+	$(AS) -m68010 -alms -a=$(@:.o=.lst) --defsym IS_68030=1 -o $@ $<
 
 obj/boot30.srec: obj/main30.o $(OBS)
-	$(LD) $(LDFLAGS) -T boot.68030.lnk obj/main.o $(OBS) $(LIBS) -Map $(@:.srec=.map) -o $@
+	$(LD) $(LDFLAGS) -T boot.68030.lnk obj/main30.o $(OBS) $(LIBS) -Map $(@:.srec=.map) -o $@
 
 target/boot30.srec: obj/boot30.srec
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 Boot Loader" -o $@

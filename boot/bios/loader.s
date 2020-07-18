@@ -88,7 +88,7 @@ loadBootLoader:     LINK      %FP,#-2                                 | local va
 4:                  MOVE.L    #BOOT_SECTORS,%D0                       | Number of CP/M sectors in the boot tracks
                     LSR.L     #SECT_HDD_CPM_SHIFT,%D0                 | Convert to HDD sectors
                     MOVE.L    #LOAD_ADDRESS,%A2                       | Load address
-                    BSR       readSectors                             | Read the block
+                    BSR       readSectors                             | Read the blocks
                     BNE       5f                                      | Error?
 
 6:                  MOVE.L    #LOAD_ADDRESS,%A0

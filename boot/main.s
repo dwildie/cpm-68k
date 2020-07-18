@@ -3,6 +3,7 @@
 
                     .text     0
                     .global   _start
+                    .global   warmBoot
 
 *---------------------------------------------------------------------------------------------------------
 * Setup the reset vectors, initial SSP, & PC.  These will appear at 0x000000 immediately afte a hardware reset
@@ -36,7 +37,7 @@ _start:             MOVEA.L   #__bss_start__, %A0                     | Zero bss
                     BRA       3b
 
 4:                  BSR       setVectors                              | Setup the interupt vectors
-                    PUTS      strID                                   | Identification string
+warmBoot:           PUTS      strID                                   | Identification string
 
                     BSR       initialiseDiskSys                       | Initialise the disk subsystem
                     BSR       initDrives                              | List the available drives
@@ -49,8 +50,13 @@ _start:             MOVEA.L   #__bss_start__, %A0                     | Zero bss
                     .section  .rodata.strings
                     .align(2)
                     .global   strID
+          .ifdef              IS_68000
+strID:              .asciz    "S100 68000 Boot Monitor V0.2.1.R3\n\r"
+          .endif
 
-strID:              .asciz    "CP/M-68K S100 Boot Loader V0.1.1\n\r"
+          .ifdef              IS_68030
+strID:              .asciz    "S100 68030 Boot Monitor V0.2.1.R3\n\r"
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
                     .data

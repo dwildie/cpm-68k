@@ -42,7 +42,10 @@ readEntry:          MOVE.B    USER_NUMBER_OFFSET(%A2),%D0             | User num
                     TST.W     %D2
                     BNE       7f                                      | Skip if the extent number is not zero
 
-                    PEA       FILE_NAME_OFFSET(%A2)                   | Check that this is a valid filename
+zzzz:               MOVE.L    %A2,%A3                                 | Debug
+                    ADD.L     #FILE_NAME_OFFSET,%A3                   | Debug
+                    MOVEM.L   %A3,-(%SP)                              | Debug
+*                    PEA       FILE_NAME_OFFSET(%A2)                   | Check that this is a valid filename
                     BSR       isValidName
                     ADD.L     #4,%SP
                     BNE       7f                                      | No, skip
@@ -144,7 +147,7 @@ isValidChar:        CMPI.B    #' ',%D0
 2:                  RTS
 
 *-----------------------------------------------------------------------------------------------------
-* Read the directory starting at offset %D0 into the buffer %A0, return number of entries in %D0
+* Read the directory starting at offset into the buffer return number of entries in %D0
 * readCpmDirectory(long offset, byte* buffer)
 *-----------------------------------------------------------------------------------------------------
 readCpmDirectory:   LINK      %FP,#0
@@ -157,6 +160,7 @@ readCpmDirectory:   LINK      %FP,#0
                     BSR       setLBA                                  | Seek to start of directory
 
                     MOVE.W    #DEF_DD_DIR_SECS,%D0                    | Calculate the number of ide sectors to be read
+                    EXT.L     %D0
                     LSR.L     #SECT_HDD_CPM_SHIFT,%D0                 | From CPM sectors to HDD sectors
 
                     MOVE.L    0x0C(%FP),%A2

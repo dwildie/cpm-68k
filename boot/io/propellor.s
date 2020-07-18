@@ -14,6 +14,7 @@ CON_IO:             ds.b      1
                     .global   writeStrn
                     .global   writeCh
                     .global   readCh
+                    .global   waitCh
 
 * ----------------------------------------------------------------------------------
 * Get a keyboard status in %D0, Z= nothing, 2 = char present
@@ -94,6 +95,22 @@ readCh:             MOVE.L    %D1,-(%SP)                              | > Save D
                     MOVE.L    #CR,%D0                                 | Restore CR to D0
 
 2:                  MOVE.L    (%SP)+,%D1                              | < Restore D1
-                    RTS                                               | Return from subroutine, inpu char is in %D0
+                    RTS                                               | Return from subroutine, input char is in %D0
 
+* ----------------------------------------------------------------------------------
+* Wait for any character to be entered
+* ----------------------------------------------------------------------------------
+waitCh:             MOVE.L    %D1,-(%SP)                              | > Save D1	
+
+1:                  MOVE.B    CON_STAT,%D1                            | Get the keyboard status in %D1
+                    AND.B     #0x02,%D1
+                    TST.B     %D1                                     | Are we ready
+                    BEQ       1b
+
+                    MOVE.B    CON_IO,%D1                              | Read the char from hardware port 01H
+
+                    MOVE.L    (%SP)+,%D1                              | < Restore D1
+                    RTS
+                    
+                    
           .end

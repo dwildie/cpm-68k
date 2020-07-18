@@ -9,7 +9,15 @@ I8255_PORT_C:       ds.b      1                                       | port 32,
 I8255_PORT_CTRL:    ds.b      1                                       | port 33, 8255 configuration port
 I8255_PORT_DRIVE:   ds.b      1                                       | port 34, To select the 1st or 2nd CF card/drive
 
-                    .global   I8255_PORT_A,I8255_PORT_DRIVE
+*-----------------------------------------------------------------------------------------------------
+                    .data
+*delayMultiplier:    .word     0x10                                    | Initial multiplier
+delayZero:          .word     0x400
+delayOne:           .word     0x20
+delayTwo:           .word     0x200
+delayThree:         .word     0x200
+delayFour:          .word     0x1
+                    .global   delayZero,delayOne,delayTwo,delayThree,delayFour
 *-----------------------------------------------------------------------------------------------------
 
                     .text
@@ -18,9 +26,11 @@ I8255_PORT_DRIVE:   ds.b      1                                       | port 34,
                     .global   setIdeDrive
                     .global   initIdeDrive
                     .global   getDriveIdent
+                    .global   readStatus,readError
                     .global   readSectors,rdSectors
                     .global   writeSectors,wrSectors
                     .global   showErrors
+                    .global   waitDataReqRdy,write8255PortA,delayStart,read8255PortA | DEBUG *************************
 
 *-----------------------------------------------------------------------------------------------------
 * Select Drive 0 (A) or 1 (B)
@@ -32,51 +42,60 @@ setIdeDrive:        MOVE.B    %D0,I8255_PORT_DRIVE                    | Select D
 * Initilze the 8255 and drive then do a hard reset on the drive, by default the drive will come up initilized in LBA mode.
 *-----------------------------------------------------------------------------------------------------
 initIdeDrive:       MOVE.B    #I8255_CFG_READ,I8255_PORT_CTRL         | Config 8255 chip, READ mode
-                    MOVE.B    #LINE_RESET,I8255_PORT_C                | Hard reset the disk drive
+                    MOVE.B    #0,I8255_PORT_C                         | No IDE control lines asserted
 
-                    MOVE.W    #IDE_RESET_DELAY,%D1                    | Time delay for reset/initilization (~66 uS, with 8MHz 8086, 1 I/O wait state)
+                    MOVE.W    delayZero,%D1                           | time delay for reset/initilization
 1:                  SUBQ.W    #1,%D1
                     BNE       1b                                      | Delay (IDE reset pulse width)
 
+                    MOVE.B    #LINE_RESET,I8255_PORT_C                | Assert the reset line to hard reset the disk drive
+
+                    MOVE.W    delayOne,%D1                            | time delay for reset/initilization
+2:                  SUBQ.W    #1,%D1
+                    BNE       2b                                      | Delay (IDE reset pulse width)
+
                     MOVE.B    #0,I8255_PORT_C                         | No IDE control lines asserted
 
-                    BSR       DELAY_32                                | Allow time for CF/Drive to recover
+                    BSR       delayStart                              | Allow time for CF/Drive to recover
 
                     BSR       waitNotBusy                             | Wait for the drive to be ready
                     BCS       5f
 
+                    PUTCH2    #'X',#'1'
                     MOVE.B    #0b11100000,%D4                         | Data for IDE SDH reg (512bytes, LBA mode, single drive, head 0000)
                     MOVE.B    #REG_SDH,%D5
                     BSR       write8255PortA                          | Write byte to select the MASTER device
 
-                    MOVE.W    #0xFF,%D6                               | <<< May need to adjust delay time
-2:                  MOVE.B    #REG_STATUS,%D5                         | Get status after initilization
+                    MOVE.W    #0xFF,%D6                               | 
+3:                  MOVE.B    #REG_STATUS,%D5                         | Get status after initilization
                     BSR       read8255PortA                           | Check Status (info in [DH])
                     MOVE.B    %D4,%D1
                     AND.B     #STATUS_MASK_BUSY_RDY,%D1
                     EOR.B     #STATUS_BIT_READY,%D1
                     BEQ       6f                                      | Return if ready bit is zero
+                    PUTCH2    #'X',#'2'
 
-                    MOVE.L    #0x0FFFF,%D7
-3:                  MOVE.B    #2,%D5                                  | May need to adjust delay time to allow cold drive to
-4:                  SUBQ.B    #1,%D5                                  | to come up to speed
+                    MOVE.W    delayThree,%D7
+4:                  SUBQ.W    #1,%D7
                     BNE       4b
-                    SUBQ.B    #1,%D7
-                    BNE       3b
 
-                    DBRA      %D6,2b
+                    DBRA      %D6,3b
 
+                    PUTCH2    #'X',#'3'
 5:                  BSR       showErrors                              | Ret with NZ flag set if error (probably no drive)
                     RTS
 
 6:                  MOVE.W    #0,%D0
                     RTS
 
-DELAY_32:           MOVE.B    #40,%D1                                 | DELAY ~32 MS (DOES NOT SEEM TO BE CRITICAL)
-1:                  MOVE.B    #0,%D2
-2:                  SUBQ.B    #1,%D2
+*-----------------------------------------------------------------------------------------------------
+* Aprox 500ms delay for IDE Drive to start
+*-----------------------------------------------------------------------------------------------------
+delayStart:         MOVE.W    delayTwo,%D1
+1:                  MOVE.W    #0x100,%D2
+2:                  SUBQ.W    #1,%D2
                     BNE       2b
-                    SUBQ.B    #1,%D1
+                    SUBQ.W    #1,%D1
                     BNE       1b
                     RTS
 
@@ -109,8 +128,8 @@ getDriveIdent:      LINK      %FP,#0
 2:                  MOVE.W    #IDE_SEC_SIZE,%D6
                     MOVE.L    8(%FP),%A2
                     BSR       readSector                              | Get 256 words (512 bytes) of data from REGdata port to IDE_BUFFER
-                    MOVE.B    #0,%D0                                  | Success, rturn 0
 
+                    MOVE.B    #0,%D0                                  | Success, return 0
 3:                  MOVEM.L   (%SP)+,%D1-%D6/%A2
                     UNLK      %FP
                     RTS
@@ -128,11 +147,15 @@ setIdeLba:          BSR       waitNotBusy                             | make sur
                     MOVE.B    #REG_SEC_LOW,%D5                        | Write low (of 24bits) byte
                     BSR       write8255PortA                          | Write to 8255 port A
 
+*                    BSR       shortDelay
+
                     MOVE.L    %D0,%D4
                     LSR.L     #8,%D4
                     ANDI.W    #0xFF,%D4
                     MOVE.B    #REG_SEC_MID,%D5                        | Write middle (of 24bits) byte
                     BSR       write8255PortA                          | Write to 8255 port A
+
+*                    BSR       shortDelay
 
                     MOVE.L    %D0,%D4
                     LSR.L     #8,%D4
@@ -183,12 +206,12 @@ readSectors:        BSR       waitNotBusy                             | make sur
 2:                  MOVE.B    #CMD_READ,%D4                           | Send sector read command to drive.
                     MOVE.B    #REG_COMMAND,%D5
                     BSR       write8255PortA
+
                     BSR       waitDataReqRdy                          | wait until it's got the data
                     BGE       3f
                     BRA       showErrors                              | Drive error
 
 3:                  MOVE.W    #IDE_SEC_SIZE,%D6                       | Read 512 bytes to %D6
-
                     BSR       readSector                              | Read each sector into the buffer
                     SUBI.B    #1,%D0
                     BNE       3b
@@ -199,17 +222,26 @@ readSectors:        BSR       waitNotBusy                             | make sur
 *----------------------------------------------------------------------------------------------------
 * Read the number of bytes specified in %D6 to the buffer pointed to by %A2
 *----------------------------------------------------------------------------------------------------
-readSector:         MOVE.B    #REG_DATA,I8255_PORT_C                  | REG regsiter address
-                    OR.B      #LINE_READ,I8255_PORT_C                 | 08H+40H, Pulse RD line
+readSector:         MOVE.B    #REG_DATA,%D1                           | REG register address
+                    MOVE.B    %D1,I8255_PORT_C
+
+*                    BSR       shortDelay
+                    OR.B      #LINE_READ,%D1                          | 08H+40H, Pulse RD line
+                    MOVE.B    %D1,I8255_PORT_C
+                    BSR       shortDelay
 
                     MOVE.B    I8255_PORT_A,(%A2)+                     | Read the lower byte first 
+*                    BSR       shortDelay
                     MOVE.B    I8255_PORT_B,(%A2)+                     | Then the upper byte next 
+*                    BSR       shortDelay
 
                     MOVE.B    #REG_DATA,I8255_PORT_C                  | Deassert RD line
                     SUBQ.W    #0x2,%D6
-                    BNE       readSector
+                    BEQ       1f
+*                    BSR       shortDelay
+                    BRA       readSector
 
-                    MOVE.B    #REG_STATUS,%D5
+1:                  MOVE.B    #REG_STATUS,%D5
                     BSR       read8255PortA                           | Returns status in D4
                     MOVE.B    %D4,%D1
                     AND.B     #0x1,%D1
@@ -265,36 +297,47 @@ writeSectors:       BSR       waitNotBusy                             | make sur
 
 3:                  MOVE.W    #IDE_SEC_SIZE,%D6                       | 512 bytes
                     MOVE.B    #I8255_CFG_WRITE,I8255_PORT_CTRL
+*                    BSR       shortDelay
 
 writeSector:        MOVE.B    (%A2)+,I8255_PORT_A
+*                    BSR       shortDelay
                     MOVE.B    (%A2)+,I8255_PORT_B
 
+*                    BSR       shortDelay
                     MOVE.B    #REG_DATA,I8255_PORT_C
+*                    BSR       shortDelay
                     OR.B      #LINE_WRITE,I8255_PORT_C                | Send WR pulse
+*                    BSR       shortDelay
                     MOVE.B    #REG_DATA,I8255_PORT_C
+*                    BSR       shortDelay
                     SUBQ.W    #0x2,%D6
-                    BNE       writeSector
+                    BEQ       4f
+*                    BSR       shortDelay
+                    BRA       writeSector
 
-                    MOVE.B    #I8255_CFG_READ,I8255_PORT_CTRL         | Set 8255 back to read mode
+4:                  MOVE.B    #I8255_CFG_READ,I8255_PORT_CTRL         | Set 8255 back to read mode
 
                     MOVE.B    #REG_STATUS,%D5
                     BSR       read8255PortA
                     MOVE.B    %D4,%D1
                     AND.B     #0x1,%D1
-                    BEQ       4f
+                    BEQ       5f
                     BSR       showErrors                              | If error display status
                     RTS
 
-4:                  MOVE.B    #0,%D0
+5:                  MOVE.B    #0,%D0
                     RTS
 
 *----------------------------------------------------------------------------------------------------
 * READ 8 bits from IDE register @ %D5, return info in %D4
 *----------------------------------------------------------------------------------------------------
 read8255PortA:      MOVE.B    %D5,I8255_PORT_C                        | Select IDE register, drive address onto control lines
+                    BSR       shortDelay
                     OR.B      #LINE_READ,I8255_PORT_C                 | RD pulse pin (40H), Assert read pin
+                    BSR       shortDelay
                     MOVE.B    I8255_PORT_A,%D4                        | Return with data in [D4]
                     MOVE.B    %D5,I8255_PORT_C                        | Select IDE register, drive address onto control lines
+                    BSR       shortDelay
                     MOVE.B    #0,I8255_PORT_C                         | Zero all port C lines
                     RTS
 
@@ -302,11 +345,15 @@ read8255PortA:      MOVE.B    %D5,I8255_PORT_C                        | Select I
 * WRITE Data in %D4 to IDE register @ %D5 - Port A
 *----------------------------------------------------------------------------------------------------
 write8255PortA:     MOVE.B    #I8255_CFG_WRITE,I8255_PORT_CTRL        | Set 8255 to write mode
+                    BSR       shortDelay
                     MOVE.B    %D4,I8255_PORT_A                        | Get data put it in 8255 A port
+                    BSR       shortDelay
                     MOVE.B    %D5,I8255_PORT_C                        | Select IDE register, drive address onto control lines
                     OR.B      #LINE_WRITE,I8255_PORT_C                | Assert write pin
                     MOVE.B    %D5,I8255_PORT_C                        | Select IDE register, drive address onto control lines
+                    BSR       shortDelay
                     MOVE.B    #0,I8255_PORT_C                         | Zero all port C lines
+                    BSR       shortDelay
                     MOVE.B    #I8255_CFG_READ,I8255_PORT_CTRL         | Config 8255 chip, read mode on return
                     RTS
 
@@ -314,55 +361,97 @@ write8255PortA:     MOVE.B    #I8255_CFG_WRITE,I8255_PORT_CTRL        | Set 8255
 * WRITE Data in %D4 to IDE register @ %D5 - Port A & B
 *----------------------------------------------------------------------------------------------------
 write8255PortAB:    MOVE.B    #I8255_CFG_WRITE,I8255_PORT_CTRL        | Set 8255 to write mode
+                    BSR       shortDelay
                     MOVE.B    %D4,I8255_PORT_A                        | Get data put it in 8255 A port
+                    BSR       shortDelay
                     MOVE.B    %D4,I8255_PORT_B                        | Get data put it in 8255 B port
+                    BSR       shortDelay
                     MOVE.B    %D5,I8255_PORT_C                        | Select IDE register, drive address onto control lines
                     OR.B      #LINE_WRITE,I8255_PORT_C                | Assert write pin
                     MOVE.B    %D5,I8255_PORT_C                        | Select IDE register, drive address onto control lines
+                    BSR       shortDelay
                     MOVE.B    #0,I8255_PORT_C                         | Zero all port C lines
+                    BSR       shortDelay
                     MOVE.B    #I8255_CFG_READ,I8255_PORT_CTRL         | Config 8255 chip, read mode on return
                     RTS
 
 *----------------------------------------------------------------------------------------------------
-* Wait till drive is not busy, rrive READY if 0x01000000
+* Read the status register of the current drive
 *----------------------------------------------------------------------------------------------------
-waitNotBusy:        MOVE.W    #0x0FFFF,%D6
-1:                  MOVE.B    #REG_STATUS,%D5                         | wait for RDY bit to be set
-                    BSR       read8255PortA                           | Note AH or CH are unchanged
+readStatus:         MOVE.B    #REG_STATUS,%D5                         | Read status
+                    BSR       read8255PortA
+                    MOVE.B    %D4,%D0
+                    RTS
+
+*----------------------------------------------------------------------------------------------------
+* Read the error register of the current drive
+*----------------------------------------------------------------------------------------------------
+readError:          MOVE.B    #REG_ERROR,%D5                          | Read error
+                    BSR       read8255PortA
+                    MOVE.B    %D4,%D0
+                    RTS
+
+*----------------------------------------------------------------------------------------------------
+* Wait till drive is not busy, drive READY if 0x01000000
+*----------------------------------------------------------------------------------------------------
+waitNotBusy:        MOVE.W    delayThree,%D6                          | Delay count
+1:                  MOVE.B    #REG_STATUS,%D5                         | Read status
+                    BSR       read8255PortA
                     MOVE.B    %D4,%D1
                     AND.B     #STATUS_MASK_BUSY_RDY,%D1
-                    EOR.B     #STATUS_BIT_READY,%D1
-                    BEQ       2f
+                    EOR.B     #STATUS_BIT_READY,%D1                   | wait for RDY bit to be set
+                    BEQ       3f
+
+                    MOVE.B    #0x40,%D1                               | Short delay before retry
+2:                  SUBQ.B    #1,%D1
+                    BNE       2b
+
                     SUBQ.W    #1,%D6
                     BNE       1b
                     MOVE.B    #0xFF,%D0
                     LSL.B     #1,%D0                                  | Set carry to indicate an error
                     RTS
 
-2:                  CLR.B     %D1                                     | Clear carry to indicate no error
+3:                  CLR.B     %D1                                     | Clear carry to indicate no error
                     RTS
 
 *----------------------------------------------------------------------------------------------------
-* Wait for the drive to be ready to transfer data.AND
+* Wait for the drive to be ready to transfer data
 *----------------------------------------------------------------------------------------------------
-waitDataReqRdy:     MOVE.W    #0x0FFFF,%D6
-1:                  MOVE.B    #REG_STATUS,%D5                         | wait for DRQ bit to be set
-                    BSR       read8255PortA                           | Note AH or CH are unchanged
+waitDataReqRdy:     MOVE.W    delayThree,%D6                          | Delay count
+1:                  MOVE.B    #REG_STATUS,%D5                         | Read status
+                    BSR       read8255PortA
                     MOVE.B    %D4,%D1
                     AND.B     #STATUS_MASK_BUSY_DRQ,%D1               | Ignore all but BUSY & DRQ bits
-                    CMP.B     #STATUS_BIT_DRQ,%D1
-                    BEQ       2f
+                    CMP.B     #STATUS_BIT_DRQ,%D1                     | wait for DRQ bit to be set
+                    BEQ       3f
+
+                    MOVE.B    #0x40,%D1                               | Short delay before retry
+2:                  SUBQ.B    #1,%D1
+                    BNE       2b
+
                     SUBQ.W    #1,%D6
                     BNE       1b
+
                     MOVE.B    #0xFF,%D0
                     LSL.B     #1,%D0                                  | Set carry to indicate an error
                     RTS
-2:
+3:
                     CLR.B     %D1                                     | Clear carry it indicate no error
                     RTS
 
 *----------------------------------------------------------------------------------------------------
-* Wait for the drive to be ready to transfer data.
+* Short delay
+*----------------------------------------------------------------------------------------------------
+shortDelay:         MOVE.L    %D1,-(%SP)
+                    MOVE.W    delayFour,%D1
+1:                  SUBQ.W    #1,%D1
+                    BNE       1b
+                    MOVE.L    (%SP)+,%D1
+                    RTS
+
+*----------------------------------------------------------------------------------------------------
+* Display any error
 *----------------------------------------------------------------------------------------------------
 showErrors:         MOVE.L    %D1,-(%SP)                              | Save %D1
                     MOVE.B    #REG_STATUS,%D5                         | Get status 
@@ -435,14 +524,12 @@ showErrors:         MOVE.L    %D1,-(%SP)                              | Save %D1
                     PUTS      strTrackZero
                     JMP       10f
 
-                    PUTS      strDrive
+                    PUTS      strDrive                                | Unknown error
                     BSR       writeDrive
 9:                  PUTS      strUnknownError
-                    BSR       newLine
-                    BRA       11f
 
 10:                 MOVE.B    %D4,%D0                                 | Display Byte bit pattern in %D6
-                    BSR       PUT_BITB                                | Show error bit pattern
+                    BSR       writeBitByte                            | Show error bit pattern
                     BSR       newLine
 
 11:                 MOVE.L    (%SP)+,%D1                              | Get origional flags

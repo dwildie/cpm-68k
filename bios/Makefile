@@ -30,7 +30,7 @@ obj/bios.srec: obj/bios.o obj/buffer.o
 obj/ldr.srec: obj/ldbios.o
 
 target/bios.srec: obj/bios.srec
-	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K S100 V0.1.1 BIOS" -o $@
+	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K S100 V0.1.1.R3 BIOS" -o $@
 	srec_info $@
 
 target/%.s: %.s

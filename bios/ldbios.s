@@ -287,7 +287,7 @@ secBuffer:          DS.B      512                                     | Buffer t
                     .text
                     .even
 
-strInit:            .ascii    "CP/M-68K S100 Boot Loader V0.1.0"
+strInit:            .ascii    "CP/M-68K S100 Boot Loader V0.1.1.R3"
 
                     DC.B      0
           .end

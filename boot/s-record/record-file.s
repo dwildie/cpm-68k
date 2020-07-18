@@ -361,16 +361,16 @@ boot:               JMP       (%A0)                                   | Good luc
                     .section  .rodata.strings
                     .align(2)
 
-strUnknownType:     .asciz    "Unknown record type "
-strExpectedS:       .asciz    "Expected the record to start with S, found 0x"
-strUnexpectedEOF:   .asciz    "Unexpected end of file\r\n"
-strChecksum1:       .asciz    "Read checksum 0x"
+strUnknownType:     .asciz    "\r\nUnknown record type "
+strExpectedS:       .asciz    "\r\nExpected the record to start with S, found 0x"
+strUnexpectedEOF:   .asciz    "\r\nUnexpected end of file\r\n"
+strChecksum1:       .asciz    "\r\nRead checksum 0x"
 strChecksum2:       .asciz    " does not equal calculated checksum 0x"
 strHeader:          .asciz    "\r\nFile header: "
 strReading:         .asciz    "\r\nReading: "
 strCount1:          .asciz    "\r\nRead "
 strCount2:          .asciz    " data records\r\n"
-strCountError1:     .asciz    "Count error, expected 0x"
+strCountError1:     .asciz    "\r\nCount error, expected 0x"
 strCountError2:     .asciz    " read %0x\r\n"
 strStartAddress:    .asciz    "Start address: 0x"
 strProceed:         .asciz    "Proceed with boot (y/N)? "

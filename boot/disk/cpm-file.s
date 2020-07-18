@@ -27,7 +27,7 @@ fOpenCPM:           LINK      %FP,#-extentsArrayBytes
                     MOVE.L    #0,%D3                                  | Use %D3 as the extent count
 
 
-                    MOVE.L    0x0C(%FP),-(%SP)                        | Format the name as 10 characters
+                    MOVE.L    0x0C(%FP),-(%SP)                        | Format the name as 11 characters
                     BSR       formatName                              | in location fileName
                     ADDQ.L    #4,%SP
 
@@ -274,7 +274,7 @@ processExtents:     MOVE.W    %D0,%D4                                 | The numb
 10:                 RTS
 
 *-----------------------------------------------------------------------------------------------------
-* Format the filename in 10 uppercase characters, CP/M directory format
+* Format the filename in 11 uppercase characters, CP/M directory format
 *-----------------------------------------------------------------------------------------------------
 formatName:         LINK      %FP,#0
                     MOVEM.L   %A0-%A2/%D0-%D2,-(%SP)
