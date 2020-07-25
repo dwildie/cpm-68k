@@ -22,6 +22,7 @@ setVectors:         MOVE.L    #busError,VECTOR_BUS_ERR
 * Exception handler:
 *-----------------------------------------------------------------------------------------------------
 busError:           PUTS      strBusError
+                    BSR       readCh
                     RTE
 
 *-----------------------------------------------------------------------------------------------------
@@ -38,18 +39,21 @@ addressError:       PUTS      strAddressError
 * Exception handler:
 *-----------------------------------------------------------------------------------------------------
 illInstrError:      PUTS      strIllInstrError
+                    BSR       readCh
                     RTE
 
 *-----------------------------------------------------------------------------------------------------
 * Exception handler:
 *-----------------------------------------------------------------------------------------------------
 zeroDivideError:    PUTS      strZeroDivideError
+                    BSR       readCh
                     RTE
 
 *-----------------------------------------------------------------------------------------------------
 * Exception handler:
 *-----------------------------------------------------------------------------------------------------
 unexpectedError:    PUTS      strUnexpectedError
+                    BSR       readCh
                     RTE
 
 *-----------------------------------------------------------------------------------------------------
@@ -62,10 +66,10 @@ trace:              PUTS      strTrace
                     .section  .rodata.strings
                     .align(2)
 
-strBusError:        .asciz    "\r\nBus error\r\n"
-strAddressError:    .asciz    "\r\nAddress error\r\n"
-strIllInstrError:   .asciz    "\r\nIllegal instruction error\r\n"
-strZeroDivideError: .asciz    "\r\nDivide by zero error\r\n"
-strUnexpectedError: .asciz    "\r\nUnexpected exception\r\n"
+strBusError:        .asciz    "\r\nBus error, press any key to continue\r\n"
+strAddressError:    .asciz    "\r\nAddress error, press any key to continue\r\n"
+strIllInstrError:   .asciz    "\r\nIllegal instruction error, press any key to continue\r\n"
+strZeroDivideError: .asciz    "\r\nDivide by zero error, press any key to continue\r\n"
+strUnexpectedError: .asciz    "\r\nUnexpected exception, press any key to continue\r\n"
 strTrace:           .asciz    "\r\nTrace:\r\n"
 

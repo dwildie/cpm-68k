@@ -44,6 +44,7 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "readNext", ">", readNextCmd, ">                  : Increment LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                  : Decrement LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>         : Set the stack pointer to <addr> and restart", 0
+                    CMD_TABLE_ENTRY "stack", "s", stackCmd, "stack              : Test the stack", 0
                     CMD_TABLE_ENTRY "status", "status", statusCmd, "status             : Read the status register of the current drive", 0
                     CMD_TABLE_ENTRY "testb", "tb", testByteCmd, "testb <addr> <len> : Memory test <len> bytes starting at <addr>", 0
                     CMD_TABLE_ENTRY "testd", "td", testDWordCmd, "testd <addr> <len> : Memory test <len> double words starting at <addr>", 0
@@ -51,7 +52,6 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "w1", "w1", ideWait1Cmd, "w1                 : Set the IDE wait 1 parameter", 1
                     CMD_TABLE_ENTRY "w2", "w2", ideWait2Cmd, "w2                 : Set the IDE wait 2 parameter", 1
                     CMD_TABLE_ENTRY "w3", "w3", ideWait3Cmd, "w3                 : Set the IDE wait 3 parameter", 1
-                    CMD_TABLE_ENTRY "w4", "w4", ideWait4Cmd, "w4                 : Set the IDE wait 4 parameter", 1
 
 cmdTableLength      =         . - cmdTable
 cmdEntryLength      =         0x12
@@ -515,10 +515,19 @@ memPrevCmd:         MOVE.L    dumpAddr,%A0
 *---------------------------------------------------------------------------------------------------------
 * Set stack pointer command: %D0 contains the number of entered command args, %A0 the start of the arg array
 *---------------------------------------------------------------------------------------------------------
-sspCmd:             CMPI.B    #2,%D0                                  | Needs two args
+sspCmd:             CMPI.B    #2,%D0                                  | Needs two args to set SP
+                    BEQ       1f
+
+                    CMPI.B    #1,%D0                                  | Needs one arge to show SP
                     BNE       wrongArgs
 
-                    MOVE.L    %A0,%A1                                 | Use A1
+                    PUTS      strStackPtr
+                    MOVE.L    %SP,%D0                                 | Show current SP
+                    BSR       writeHexLong
+                    BSR       newLine
+                    BRA       2f
+
+1:                  MOVE.L    %A0,%A1                                 | Use A1
 
                     MOVE.L    4(%A1),%A0                              | arg[1], stack address
                     BSR       asciiToLong
@@ -530,7 +539,74 @@ sspCmd:             CMPI.B    #2,%D0                                  | Needs tw
                     MOVE.L    %D0,%SP                                 | Set the stack point
                     JMP       warmBoot                                | Restart
 
-                    RTS
+2:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Test the stack
+*---------------------------------------------------------------------------------------------------------
+stackCmd:           MOVE.W    #0x1000,%D6
+
+1:                  MOVE.L    #0x00000000,-(%SP)
+                    MOVE.L    #0x55555555,-(%SP)
+                    MOVE.L    #0xAAAAAAAA,-(%SP)
+                    MOVE.L    #0xFFFFFFFF,-(%SP)
+
+                    MOVE.L    (%SP)+,%D5
+                    CMP.L     #0xFFFFFFFF,%D5
+                    BEQ       2f
+
+                    PUTS      strStackErr1
+                    MOVE.L    #0xFFFFFFFF,%D0
+                    BSR       writeHexLong
+                    PUTS      strStackErr2
+                    MOVE.L    %D5,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+
+2:                  MOVE.L    (%SP)+,%D5
+                    CMP.L     #0xAAAAAAAA,%D5
+                    BEQ       3f
+
+                    PUTS      strStackErr1
+                    MOVE.L    #0xAAAAAAAA,%D0
+                    BSR       writeHexLong
+                    PUTS      strStackErr2
+                    MOVE.L    %D5,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+
+3:                  MOVE.L    (%SP)+,%D5
+                    CMP.L     #0x55555555,%D5
+                    BEQ       4f
+
+                    PUTS      strStackErr1
+                    MOVE.L    #0x55555555,%D0
+                    BSR       writeHexLong
+                    PUTS      strStackErr2
+                    MOVE.L    %D5,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+
+4:                  MOVE.L    (%SP)+,%D5
+                    CMP.L     #0x00000000,%D5
+                    BEQ       5f
+
+                    PUTS      strStackErr1
+                    MOVE.L    #0x00000000,%D0
+                    BSR       writeHexLong
+                    PUTS      strStackErr2
+                    MOVE.L    %D5,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+
+5:                  DBRA      %D6,1b
+
+                    BSR       keystat
+                    BNE       6f
+*                    PUTCH     #'.'
+                    BRA       stackCmd
+
+6:                  RTS
 
 *---------------------------------------------------------------------------------------------------------
 * Set the IDE Wait 0 parameter
@@ -625,29 +701,6 @@ ideWait3Cmd:        PUTS      strCurrentWaitParameter                 | Display 
 3:                  RTS
 
 *---------------------------------------------------------------------------------------------------------
-* Set the IDE Wait 4 parameter
-*---------------------------------------------------------------------------------------------------------
-ideWait4Cmd:        PUTS      strCurrentWaitParameter                 | Display current value
-                    MOVE.W    delayFour,%D0
-                    BSR       writeHexWord
-
-                    PUTS      strNewWaitParameter                     | Prompt for new value
-                    BSR       readLong
-
-                    TST.L     %D0
-                    BNE       1f
-                    PUTS      strInvalidValue
-                    BRA       3f
-
-1:                  CMPI.L    #0xFFFF,%D0
-                    BLE       2f
-                    PUTS      strInvalidValue
-                    BRA       3f
-
-2:                  MOVE.W    %D0,delayFour
-3:                  RTS
-
-*---------------------------------------------------------------------------------------------------------
 wrongArgs:          PUTS      strWrongArgs
                     RTS
 
@@ -671,3 +724,6 @@ strBootLoaderError: .asciz    "Boot failed\r\n"
 strCurrentWaitParameter: .asciz "\r\nCurrent wait parameter: 0x"
 strNewWaitParameter: .asciz   "\r\nNew wait parameter:     0x"
 strInvalidValue:    .asciz    "\r\nInvalid value\r\n"
+strStackPtr:        .asciz    " = 0x"
+strStackErr1:       .asciz    "Stack error, expected 0x"
+strStackErr2:       .asciz    ", read 0x"
