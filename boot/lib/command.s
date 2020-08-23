@@ -3,7 +3,7 @@
 
 lineBufferLen       =         60
 maxTokens           =         4
-                    .global   memDumpCmd,memNextCmd,memPrevCmd,s
+                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd
 *---------------------------------------------------------------------------------------------------------
                     .bss
                     .align(2)
@@ -39,10 +39,12 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "mem", "mem", memDumpCmd, "mem <addr> <len>   : Display <len> bytes starting at <addr>", 0
                     CMD_TABLE_ENTRY "u", "u", memNextCmd, "u                  : Read the next memory block", 0
                     CMD_TABLE_ENTRY "i", "i", memPrevCmd, "i                  : Read the next memory block", 0
+                    CMD_TABLE_ENTRY "irq", "q", irqMaskCmd, "irq                : Display or set the IRQ mask", 0
                     CMD_TABLE_ENTRY "part", "p", partitionCmd, "part <partId>      : Select partition <partId>", 0
                     CMD_TABLE_ENTRY "read", "r", readCmd, "read <lba>         : Read and display the drive sector at <lba>", 0
                     CMD_TABLE_ENTRY "readNext", ">", readNextCmd, ">                  : Increment LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                  : Decrement LBA, read and display the drive sector", 0
+                    CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs               : Display the registers", 0
                     CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>         : Set the stack pointer to <addr> and restart", 0
                     CMD_TABLE_ENTRY "stack", "s", stackCmd, "stack              : Test the stack", 0
                     CMD_TABLE_ENTRY "status", "status", statusCmd, "status             : Read the status register of the current drive", 0
@@ -466,8 +468,8 @@ memDumpCmd:         CMPI.B    #2,%D0                                  | Needs at
 
                     MOVE.L    4(%A1),%A0                              | arg[1], start address
                     BSR       asciiToLong
-                    TST.L     %D0
-                    BLT       invalidArg                              | Invalid
+*                    TST.L     %D0
+*                    BLT       invalidArg                              | Invalid
 
 *                    CMPI.L    #0xFF0000,%D0                           | Upper memory limit???
 *                    BGE       invalidArg
@@ -510,6 +512,40 @@ memPrevCmd:         MOVE.L    dumpAddr,%A0
                     MOVE.L    %A0,dumpAddr
                     MOVE.L    #0x200,%D0
                     BSR       memDump
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Display or set the IRQ mask
+*---------------------------------------------------------------------------------------------------------
+irqMaskCmd:         CMPI.B    #2,%D0                                  | Needs two args to set mask
+                    BEQ       1f
+
+                    CMPI.B    #1,%D0                                  | Needs one arg to show mask
+                    BNE       wrongArgs
+
+                    PUTS      strIrqMask
+                    MOVE      %SR,%D0                                 | Show current IRQ Mask
+                    LSR       #8,%D0
+                    AND       #0x7,%D0
+                    BSR       writeHexDigit
+                    BSR       newLine
+                    BRA       2f
+
+1:                  MOVE.L    4(%A0),%A0                              | arg[1], irq mask
+                    BSR       asciiToLong
+                    AND       #0x7,%D0                                | 3 least significant bits
+                    LSL       #8,%D0
+                    MOVE      %SR,%D1
+                    AND       #0xF800,%D1
+                    OR        %D0,%D1
+                    MOVE      %D1,%SR
+
+2:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Display the registers
+*---------------------------------------------------------------------------------------------------------
+regsCmd:            BSR       writeRegs
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
@@ -727,3 +763,5 @@ strInvalidValue:    .asciz    "\r\nInvalid value\r\n"
 strStackPtr:        .asciz    " = 0x"
 strStackErr1:       .asciz    "Stack error, expected 0x"
 strStackErr2:       .asciz    ", read 0x"
+strIrqMask:         .asciz    " = 0x"
+
