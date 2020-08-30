@@ -23,8 +23,8 @@ dumpAddr:           ds.l      1
                     .align(16)
 
 cmdTable:                                                             | Array of command entries
-                    CMD_TABLE_ENTRY "a", "a", driveACmd, "a                  : Select drive A", 0
-                    CMD_TABLE_ENTRY "b", "b", driveBCmd, "b                  : Select drive B", 0
+                    CMD_TABLE_ENTRY "a", "a:", driveACmd, "a                  : Select drive A", 0
+                    CMD_TABLE_ENTRY "b", "b:", driveBCmd, "b                  : Select drive B", 0
                     CMD_TABLE_ENTRY "boot", "boot", bootCmd, "boot <file>        : Load S-Record <file> into memory and execute", 0
                     CMD_TABLE_ENTRY "dir", "ls", directoryCmd, "dir                : Display directory of current drive", 0
                     CMD_TABLE_ENTRY "def", "def", diskDefCmd, "def                : Display the CPM disk definition", 0
@@ -44,12 +44,16 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "read", "r", readCmd, "read <lba>         : Read and display the drive sector at <lba>", 0
                     CMD_TABLE_ENTRY "readNext", ">", readNextCmd, ">                  : Increment LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                  : Decrement LBA, read and display the drive sector", 0
+          .ifdef              IS_68030
                     CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs               : Display the registers", 0
+          .endif
                     CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>         : Set the stack pointer to <addr> and restart", 0
+          .ifdef              IS_68030
                     CMD_TABLE_ENTRY "stack", "s", stackCmd, "stack              : Test the stack", 0
                     CMD_TABLE_ENTRY "status", "status", statusCmd, "status             : Read the status register of the current drive", 0
                     CMD_TABLE_ENTRY "testb", "tb", testByteCmd, "testb <addr> <len> : Memory test <len> bytes starting at <addr>", 0
                     CMD_TABLE_ENTRY "testd", "td", testDWordCmd, "testd <addr> <len> : Memory test <len> double words starting at <addr>", 0
+          .endif
                     CMD_TABLE_ENTRY "w0", "w0", ideWait0Cmd, "w0                 : Set the IDE wait 0 parameter", 1
                     CMD_TABLE_ENTRY "w1", "w1", ideWait1Cmd, "w1                 : Set the IDE wait 1 parameter", 1
                     CMD_TABLE_ENTRY "w2", "w2", ideWait2Cmd, "w2                 : Set the IDE wait 2 parameter", 1
@@ -70,7 +74,6 @@ cmdEntryHidden      =         0x10                                    | Offset t
 
                     .text
                     .global   cmdLoop
-                    .global   partitionCmd                            | **** DEBUG
 
 *---------------------------------------------------------------------------------------------------------
 * Command loop: display prompt, read input, find command entry, execute
@@ -323,6 +326,7 @@ readPrevCmd:        BSR       decrementLBA
 
                     RTS
 
+          .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
 * Read the status register of the current drive
 *---------------------------------------------------------------------------------------------------------
@@ -331,6 +335,7 @@ statusCmd:          BSR       readStatus
                     BSR       writeBitByte
                     BSR       newLine
                     RTS
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
 * Read the error register of the current drive
@@ -402,6 +407,7 @@ loader:             BSR       loadBootLoader                          | Call the
                     PUTS      strBootLoaderError                      | Should never return
 1:                  RTS
 
+          .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
 * Memory byte test command: %D0 contains the number of entered command args, %A0 the start of the arg array
 *---------------------------------------------------------------------------------------------------------
@@ -455,6 +461,7 @@ testDWordCmd:       CMPI.B    #3,%D0                                  | Needs th
                     BSR       memDWordTest
 
                     RTS
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
 * Memory dump command: %D0 contains the number of entered command args, %A0 the start of the arg array
@@ -542,11 +549,13 @@ irqMaskCmd:         CMPI.B    #2,%D0                                  | Needs tw
 
 2:                  RTS
 
+          .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
 * Display the registers
 *---------------------------------------------------------------------------------------------------------
 regsCmd:            BSR       writeRegs
                     RTS
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
 * Set stack pointer command: %D0 contains the number of entered command args, %A0 the start of the arg array
@@ -577,6 +586,7 @@ sspCmd:             CMPI.B    #2,%D0                                  | Needs tw
 
 2:                  RTS
 
+          .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
 * Test the stack
 *---------------------------------------------------------------------------------------------------------
@@ -643,6 +653,7 @@ stackCmd:           MOVE.W    #0x1000,%D6
                     BRA       stackCmd
 
 6:                  RTS
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
 * Set the IDE Wait 0 parameter

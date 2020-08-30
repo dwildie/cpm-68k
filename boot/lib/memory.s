@@ -37,7 +37,7 @@ memClr:             LINK      %FP,#0
 
                     MOVE.W    0x0C(%FP),%D0
                     MOVE.L    0x08(%FP),%A0
-                    
+
                     BRA       2f
 1:                  MOVE.B    #0,(%A0,%D0.W)
 2:                  DBRA      %D0,1b
@@ -99,6 +99,7 @@ memDump:            MOVEM.L   %D1-%D4/%A0-%A1,-(%SP)
                     MOVEM.L   (%SP)+,%D1-%D4/%A0-%A1                  | Done, restore regs and return 
                     RTS
 
+          .ifdef              IS_68030
 *-------------------------------------------------------------------------
 * Test %D0 bytes in RAM starting at %A0
 *-----------------------------------------------------------------------------------------------------
@@ -490,7 +491,7 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
 
                     MOVEM.L   (%SP)+,%D1-%D5/%A0-%A3
                     RTS
-
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
                     .section  .rodata.strings

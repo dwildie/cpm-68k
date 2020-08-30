@@ -14,7 +14,7 @@ I8255_PORT_DRIVE:   ds.b      1                                       | port 34,
 delayZero:          .word     0x400
 delayOne:           .word     0x20
 delayTwo:           .word     0x200
-delayThree:         .word     0x200
+delayThree:         .word     0x400
                     .global   delayZero,delayOne,delayTwo,delayThree
 *-----------------------------------------------------------------------------------------------------
 
@@ -28,7 +28,6 @@ delayThree:         .word     0x200
                     .global   readSectors,rdSectors
                     .global   writeSectors,wrSectors
                     .global   showErrors
-                    .global   waitDataReqRdy,write8255PortA,delayStart,read8255PortA | DEBUG *************************
 
 *-----------------------------------------------------------------------------------------------------
 * Select Drive 0 (A) or 1 (B)
@@ -59,7 +58,6 @@ initIdeDrive:       MOVE.B    #I8255_CFG_READ,I8255_PORT_CTRL         | Config 8
                     BSR       waitNotBusy                             | Wait for the drive to be ready
                     BCS       5f
 
-                    PUTCH2    #'X',#'1'
                     MOVE.B    #0b11100000,%D4                         | Data for IDE SDH reg (512bytes, LBA mode, single drive, head 0000)
                     MOVE.B    #REG_SDH,%D5
                     BSR       write8255PortA                          | Write byte to select the MASTER device
@@ -71,7 +69,6 @@ initIdeDrive:       MOVE.B    #I8255_CFG_READ,I8255_PORT_CTRL         | Config 8
                     AND.B     #STATUS_MASK_BUSY_RDY,%D1
                     EOR.B     #STATUS_BIT_READY,%D1
                     BEQ       6f                                      | Return if ready bit is zero
-                    PUTCH2    #'X',#'2'
 
                     MOVE.W    delayThree,%D7
 4:                  SUBQ.W    #1,%D7
@@ -79,7 +76,6 @@ initIdeDrive:       MOVE.B    #I8255_CFG_READ,I8255_PORT_CTRL         | Config 8
 
                     DBRA      %D6,3b
 
-                    PUTCH2    #'X',#'3'
 5:                  BSR       showErrors                              | Ret with NZ flag set if error (probably no drive)
                     RTS
 

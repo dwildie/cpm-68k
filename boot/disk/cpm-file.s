@@ -8,8 +8,6 @@
                     .global   fReadCPM
                     .global   fCloseCPM
 
-                    .global   readBlock                               | **** DEBUG
-
 *-----------------------------------------------------------------------------------------------------
 * fOpenCPM(long partitionOffset, char* fileName)
 * Open fileName, 8 char name + 3 char type
@@ -346,7 +344,5 @@ fileName:           ds.b      10
 *---------------------------------------------------------------------------------------------------------
                     .section  .rodata.strings
                     .align(2)
-
-strDebugFound:      .asciz    "\r\nMatched extent "
 
 

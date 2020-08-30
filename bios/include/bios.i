@@ -13,8 +13,6 @@ DPH_LEN             =         26                                      | length o
 
 TRAP_3              =         0x8C                                    | Trap 3
 
-MEM_END             =         $FCFFFF                                 | End of memory, the monitor starts after this
-
           .ifne               _GNU_
 _ccp                =         0x4BC                                   | From CPM400.MAP
           .endif

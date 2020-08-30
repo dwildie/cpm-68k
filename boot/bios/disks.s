@@ -43,7 +43,6 @@ D_FAT_NAMES:        .long     strDriveA
                     .global   initDisks
                     .global   readDiskSector
                     .global   writeDiskSector
-                    .global   openVDisk,ovd1                          | **** DEBUG
 
 *-----------------------------------------------------------------------------------------------------
 * initDisks()

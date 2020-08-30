@@ -3,8 +3,6 @@
                     .text
 
                     .global   biosHandler
-                    .global   readSector                              | ***** Debug
-                    .global   g                             | ***** Debug
 
 *-----------------------------------------------------------------------------------------------------
 * Trap 15 - Handle calls from the bios

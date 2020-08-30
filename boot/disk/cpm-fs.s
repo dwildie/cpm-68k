@@ -6,7 +6,6 @@
                     .text
                     .global   listCpmDirectory
                     .global   readCpmDirectory
-                    .global   isValidName                             | ***DEBUG
 
 *-----------------------------------------------------------------------------------------------------
 * Display the directory listing for the currently selected drive
@@ -42,10 +41,7 @@ readEntry:          MOVE.B    USER_NUMBER_OFFSET(%A2),%D0             | User num
                     TST.W     %D2
                     BNE       7f                                      | Skip if the extent number is not zero
 
-zzzz:               MOVE.L    %A2,%A3                                 | Debug
-                    ADD.L     #FILE_NAME_OFFSET,%A3                   | Debug
-                    MOVEM.L   %A3,-(%SP)                              | Debug
-*                    PEA       FILE_NAME_OFFSET(%A2)                   | Check that this is a valid filename
+                    PEA       FILE_NAME_OFFSET(%A2)                   | Check that this is a valid filename
                     BSR       isValidName
                     ADD.L     #4,%SP
                     BNE       7f                                      | No, skip
