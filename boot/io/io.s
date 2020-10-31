@@ -1,116 +1,90 @@
-                    .include  "include/ascii.i"
+                    .include  "include/macros.i"
+                    .include  "include/io-device.i"
 
 * ----------------------------------------------------------------------------------
-                    .section  .ports.prop
-
-CON_STAT:           ds.b      1
-CON_IO:             ds.b      1
+* Route io calls to the selected device
 * ----------------------------------------------------------------------------------
 
+                    .data
+device:             .byte     DEV_PROP
+
+* ----------------------------------------------------------------------------------
                     .text
 
+                    .global   setIODevice
                     .global   keystat
-                    .global   writeStr
-                    .global   writeStrn
-                    .global   writeCh
-                    .global   readCh
-                    .global   waitCh
+                    .global   outch
+                    .global   inch
+
+* ----------------------------------------------------------------------------------
+* Set the current IO device, device is specified in %DO.B
+* ----------------------------------------------------------------------------------
+setIODevice:        CMPI.B    #DEV_PROP,%D0
+                    BEQ       1f
+
+                    CMPI.B    #DEV_SER_A,%D0
+                    BNE       2f
+                    BSR       serInitA
+                    BRA       1f
+
+2:                  CMPI.B    #DEV_SER_B,%D0
+                    BNE       3f
+                    BSR       serInitB
+                    BRA       1f
+
+3:                  CMPI.B    #DEV_USB,%D0
+                    BEQ       1f
+
+                    PUTS      strUnknownDevice
+                    PUTCH     %D0
+                    BSR       newLine
+
+1:                  MOVE.B    %D0,device
+                    RTS
 
 * ----------------------------------------------------------------------------------
 * Get a keyboard status in %D0, Z= nothing, 2 = char present
 * ----------------------------------------------------------------------------------
-keystat:            MOVE.B    CON_STAT,%D0                            | Get a keyboard status in %D0, Z= nothing, 2 = char present
-                    AND.B     #0x02,%D0
-                    TST.B     %D0
-                    RTS
-
-* ----------------------------------------------------------------------------------
-* Output the byte (character) in D0 to the console port
-* ----------------------------------------------------------------------------------
-writeCh:            MOVE.L    %D1,-(%SP)                              | > Save D1	
-                    BSR       outch
-                    MOVE.L    (%SP)+,%D1                              | < Restore D1
-                    RTS
-
-* ----------------------------------------------------------------------------------
-* writeStrn(char *str, long count)
-* Output the count bytes from str to the console port
-* ----------------------------------------------------------------------------------
-                    .type     writeStrn,function
-writeStrn:          LINK      %FP,#0
-                    MOVEM.L   %D0-%D2/%A0,-(%SP)
-
-                    MOVE.L    0x0C(%FP),%D2
-                    MOVE.L    0x08(%FP),%A0
-                    BRA       2f
-
-1:                  MOVE.B    (%A0)+,%D0
-                    BSR       outch
-2:                  DBRA      %D2,1b
-
-                    MOVEM.L   (%SP)+,%D0-%D2/%A0
-                    UNLK      %FP
-                    RTS
-* ----------------------------------------------------------------------------------
-* Output the null terminated string, pointed to by A2, to the console port
-* ----------------------------------------------------------------------------------
-writeStr:           MOVEM.L   %D0-%D1,-(%SP)                          | > Save D1	
-
-1:                  MOVE.B    (%A2)+,%D0
-                    TST.B     %D0
-                    BEQ       2f                                      | If null character found
-                    BSR       outch                                   | Output the character
-                    BRA       1b                                      | Next
-
-2:                  MOVEM.L   (%SP)+,%D1-%D0                          | < Restore D1
-                    RTS
-
-* ----------------------------------------------------------------------------------
-* Output the chracter in %D1.B
-* ----------------------------------------------------------------------------------
-outch:              MOVE.B    CON_STAT,%D1                            | Check CRT status is ready to receive character
-                    AND.B     #0x04,%D1
-                    TST.B     %D1
-                    BEQ       outch
-
-                    MOVE.B    %D0,CON_IO                              | Output ASCII (in %D0) to hardware port 01H
-
+keystat:            CMPI.B    #DEV_PROP,device
+                    BEQ       p_keystat
+                    CMPI.B    #DEV_SER_A,device
+                    BEQ       a_keystat
+                    CMPI.B    #DEV_SER_B,device
+                    BEQ       b_keystat
+                    CMPI.B    #DEV_USB,device
+                    BEQ       u_keystat
                     RTS
 
 
 * ----------------------------------------------------------------------------------
-* Read a character from keyboard into %D0 (NOTE will NOT be echoed)
+* Output a character from %D1.B
 * ----------------------------------------------------------------------------------
-readCh:             MOVE.L    %D1,-(%SP)                              | > Save D1	
-
-1:                  MOVE.B    CON_STAT,%D1                            | Get the keyboard status in %D1
-                    AND.B     #0x02,%D1
-                    TST.B     %D1                                     | Are we ready
-                    BEQ       1b
-
-                    MOVE.B    CON_IO,%D0                              | Get ASCII (in %D0) from hardware port 01H
-
-                    CMPI.B    #CR,%D0                                 | If char is CR (Enter key), also output a LF
-                    BNE       2f
-                    MOVE.L    #CR,%D0                                 | Restore CR to D0
-
-2:                  MOVE.L    (%SP)+,%D1                              | < Restore D1
-                    RTS                                               | Return from subroutine, input char is in %D0
-
-* ----------------------------------------------------------------------------------
-* Wait for any character to be entered
-* ----------------------------------------------------------------------------------
-waitCh:             MOVE.L    %D1,-(%SP)                              | > Save D1	
-
-1:                  MOVE.B    CON_STAT,%D1                            | Get the keyboard status in %D1
-                    AND.B     #0x02,%D1
-                    TST.B     %D1                                     | Are we ready
-                    BEQ       1b
-
-                    MOVE.B    CON_IO,%D1                              | Read the char from hardware port 01H
-
-                    MOVE.L    (%SP)+,%D1                              | < Restore D1
+outch:              CMPI.B    #DEV_PROP,device
+                    BEQ       p_outch
+                    CMPI.B    #DEV_SER_A,device
+                    BEQ       a_outch
+                    CMPI.B    #DEV_SER_B,device
+                    BEQ       b_outch
+                    CMPI.B    #DEV_USB,device
+                    BEQ       u_outch
                     RTS
-                    
-                    
+
+* ----------------------------------------------------------------------------------
+* Input a character into %D1.B
+* ----------------------------------------------------------------------------------
+inch:               CMPI.B    #DEV_PROP,device
+                    BEQ       p_inch
+                    CMPI.B    #DEV_SER_A,device
+                    BEQ       a_inch
+                    CMPI.B    #DEV_SER_B,device
+                    BEQ       b_inch
+                    CMPI.B    #DEV_USB,device
+                    BEQ       u_inch
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+                    .section  .rodata.strings
+                    .align(2)
+strUnknownDevice:   .asciz    "Unknown I/O device "
+
           .end

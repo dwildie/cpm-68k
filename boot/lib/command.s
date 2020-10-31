@@ -1,5 +1,6 @@
                     .include  "include/macros.i"
                     .include  "include/ide.i"
+                    .include  "include/io-device.i"
 
 lineBufferLen       =         60
 maxTokens           =         4
@@ -23,49 +24,52 @@ dumpAddr:           ds.l      1
                     .align(16)
 
 cmdTable:                                                             | Array of command entries
-                    CMD_TABLE_ENTRY "a", "a:", driveACmd, "a                  : Select drive A", 0
-                    CMD_TABLE_ENTRY "b", "b:", driveBCmd, "b                  : Select drive B", 0
-                    CMD_TABLE_ENTRY "bt", "bt", bootCmd, "boot               : Boot from system tracks of current drive and partition", 0
-                    CMD_TABLE_ENTRY "boot", "boot", bootCmd, "boot <file>        : Load S-Record <file> into memory and execute", 0
-                    CMD_TABLE_ENTRY "dir", "ls", directoryCmd, "dir                : Display directory of current drive", 0
-                    CMD_TABLE_ENTRY "def", "def", diskDefCmd, "def                : Display the CPM disk definition", 0
-                    CMD_TABLE_ENTRY "error", "error", errorCmd, "error              : Read the error register of the current drive", 0
-                    CMD_TABLE_ENTRY "fdisk", "fdisk", fdiskCmd, "fdisk              : Display the current drive's MBR partition table", 0
-                    CMD_TABLE_ENTRY "help", "h", helpCmd, "help               : Display the list of commands", 0
-                    CMD_TABLE_ENTRY "id", "id", idCmd, "id                 : Display the drive's id info", 0
-                    CMD_TABLE_ENTRY "init", "init", initIdeDriveCmd, "init               : Initialise the current IDE drive", 0
-                    CMD_TABLE_ENTRY "irq", "q", irqMaskCmd, "irq                : Display or set the IRQ mask", 0
-                    CMD_TABLE_ENTRY "key", "key", keyCmd, "key                : Display key strokes as ASCII, terminated by new line", 0
-                    CMD_TABLE_ENTRY "lba", "lba", lbaCmd, "lba <val>          : Set selected drive's LBA value", 0
-                    CMD_TABLE_ENTRY "mbr", "mbr", mbrCmd, "mbr                : Read the current drive's MBR partition table", 0
-                    CMD_TABLE_ENTRY "mem", "mem", memDumpCmd, "mem <addr> <len>   : Display <len> bytes starting at <addr>", 0
-                    CMD_TABLE_ENTRY "u", "u", memNextCmd, "u                  : Read the next memory block", 0
-                    CMD_TABLE_ENTRY "i", "i", memPrevCmd, "i                  : Read the previous memory block", 0
-                    CMD_TABLE_ENTRY "part", "p", partitionCmd, "part <partId>      : Select partition <partId>", 0
+                    CMD_TABLE_ENTRY "a", "a:", driveACmd, "a                   : Select drive A", 0
+                    CMD_TABLE_ENTRY "b", "b:", driveBCmd, "b                   : Select drive B", 0
+                    CMD_TABLE_ENTRY "bt", "bt", bootCmd, "boot                : Boot from system tracks of current drive and partition", 0
+                    CMD_TABLE_ENTRY "boot", "boot", bootCmd, "boot <file>         : Load S-Record <file> into memory and execute", 0
           .ifdef              IS_68030
-                    CMD_TABLE_ENTRY "pin", "pi", readPortCmd, "pin <port>         : Read from portNo", 0
-                    CMD_TABLE_ENTRY "pout", "po", writePortCmd, "pout <port> <byte> : Write byte to portNo", 0
+                    CMD_TABLE_ENTRY "console", "con", setConsoleCmd, "console <[A|B|P|U]> : Set the console device", 0
           .endif
-                    CMD_TABLE_ENTRY "read", "r", readCmd, "read <lba>         : Read and display the drive sector at <lba>", 0
-                    CMD_TABLE_ENTRY "readNext", ">", readNextCmd, ">                  : Increment LBA, read and display the drive sector", 0
-                    CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                  : Decrement LBA, read and display the drive sector", 0
+                    CMD_TABLE_ENTRY "dir", "ls", directoryCmd, "dir                 : Display directory of current drive", 0
+                    CMD_TABLE_ENTRY "def", "def", diskDefCmd, "def                 : Display the CPM disk definition", 0
+                    CMD_TABLE_ENTRY "error", "error", errorCmd, "error               : Read the error register of the current drive", 0
+                    CMD_TABLE_ENTRY "fdisk", "fdisk", fdiskCmd, "fdisk               : Display the current drive's MBR partition table", 0
+                    CMD_TABLE_ENTRY "help", "h", helpCmd, "help                : Display the list of commands", 0
+                    CMD_TABLE_ENTRY "id", "id", idCmd, "id                  : Display the drive's id info", 0
+                    CMD_TABLE_ENTRY "init", "init", initIdeDriveCmd, "init                : Initialise the current IDE drive", 0
+                    CMD_TABLE_ENTRY "irq", "q", irqMaskCmd, "irq                 : Display or set the IRQ mask", 0
+                    CMD_TABLE_ENTRY "key", "key", keyCmd, "key                 : Display key strokes as ASCII, terminated by new line", 0
+                    CMD_TABLE_ENTRY "lba", "lba", lbaCmd, "lba <val>           : Set selected drive's LBA value", 0
+                    CMD_TABLE_ENTRY "mbr", "mbr", mbrCmd, "mbr                 : Read the current drive's MBR partition table", 0
+                    CMD_TABLE_ENTRY "mem", "mem", memDumpCmd, "mem <addr> <len>    : Display <len> bytes starting at <addr>", 0
+                    CMD_TABLE_ENTRY "u", "u", memNextCmd, "u                   : Read the next memory block", 0
+                    CMD_TABLE_ENTRY "i", "i", memPrevCmd, "i                   : Read the previous memory block", 0
+                    CMD_TABLE_ENTRY "part", "p", partitionCmd, "part <partId>       : Select partition <partId>", 0
           .ifdef              IS_68030
-                    CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs               : Display the registers", 0
-                    CMD_TABLE_ENTRY "sinit", "si", serialInitCmd, "sinit <[A|B]>      : Initialise serial port A or B", 0
-                    CMD_TABLE_ENTRY "sout", "so", serialOutCmd, "sout <[A|B|U]>     : Console out to serial port A, B or USB", 0
-                    CMD_TABLE_ENTRY "sloop", "sl", serialLoopCmd, "sloop <[A|B|U]>    : Loopback serial port A, B or USB", 0
+                    CMD_TABLE_ENTRY "pin", "pi", readPortCmd, "pin <port>          : Read from portNo", 0
+                    CMD_TABLE_ENTRY "pout", "po", writePortCmd, "pout <port> <byte>  : Write byte to portNo", 0
           .endif
-                    CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>         : Set the stack pointer to <addr> and restart", 0
+                    CMD_TABLE_ENTRY "read", "r", readCmd, "read <lba>          : Read and display the drive sector at <lba>", 0
+                    CMD_TABLE_ENTRY "readNext", ">", readNextCmd, ">                   : Increment LBA, read and display the drive sector", 0
+                    CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                   : Decrement LBA, read and display the drive sector", 0
           .ifdef              IS_68030
-                    CMD_TABLE_ENTRY "stack", "s", stackCmd, "stack              : Test the stack", 0
-                    CMD_TABLE_ENTRY "status", "status", statusCmd, "status             : Read the status register of the current drive", 0
-                    CMD_TABLE_ENTRY "testb", "tb", testByteCmd, "testb <addr> <len> : Memory test <len> bytes starting at <addr>", 0
-                    CMD_TABLE_ENTRY "testd", "td", testDWordCmd, "testd <addr> <len> : Memory test <len> double words starting at <addr>", 0
+                    CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs                : Display the registers", 0
+                    CMD_TABLE_ENTRY "sinit", "si", serialInitCmd, "sinit <[A|B]>       : Initialise serial port A or B", 0
+                    CMD_TABLE_ENTRY "sout", "so", serialOutCmd, "sout <[A|B|U]>      : Console out to serial port A, B or USB", 0
+                    CMD_TABLE_ENTRY "sloop", "sl", serialLoopCmd, "sloop <[A|B|U]>     : Loopback serial port A, B or USB", 0
           .endif
-                    CMD_TABLE_ENTRY "w0", "w0", ideWait0Cmd, "w0                 : Set the IDE wait 0 parameter", 1
-                    CMD_TABLE_ENTRY "w1", "w1", ideWait1Cmd, "w1                 : Set the IDE wait 1 parameter", 1
-                    CMD_TABLE_ENTRY "w2", "w2", ideWait2Cmd, "w2                 : Set the IDE wait 2 parameter", 1
-                    CMD_TABLE_ENTRY "w3", "w3", ideWait3Cmd, "w3                 : Set the IDE wait 3 parameter", 1
+                    CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>          : Set the stack pointer to <addr> and restart", 0
+          .ifdef              IS_68030
+                    CMD_TABLE_ENTRY "stack", "s", stackCmd, "stack               : Test the stack", 0
+                    CMD_TABLE_ENTRY "status", "status", statusCmd, "status              : Read the status register of the current drive", 0
+                    CMD_TABLE_ENTRY "testb", "tb", testByteCmd, "testb <addr> <len>  : Memory test <len> bytes starting at <addr>", 0
+                    CMD_TABLE_ENTRY "testd", "td", testDWordCmd, "testd <addr> <len>  : Memory test <len> double words starting at <addr>", 0
+          .endif
+                    CMD_TABLE_ENTRY "w0", "w0", ideWait0Cmd, "w0                  : Set the IDE wait 0 parameter", 1
+                    CMD_TABLE_ENTRY "w1", "w1", ideWait1Cmd, "w1                  : Set the IDE wait 1 parameter", 1
+                    CMD_TABLE_ENTRY "w2", "w2", ideWait2Cmd, "w2                  : Set the IDE wait 2 parameter", 1
+                    CMD_TABLE_ENTRY "w3", "w3", ideWait3Cmd, "w3                  : Set the IDE wait 3 parameter", 1
 
 cmdTableLength      =         . - cmdTable
 cmdEntryLength      =         0x12
@@ -663,10 +667,38 @@ stackCmd:           MOVE.W    #0x1000,%D6
 6:                  RTS
           .endif
 
+          .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
 * Initialise a serial port
 *---------------------------------------------------------------------------------------------------------
+setConsoleCmd:      CMPI.B    #2,%D0                                  | Needs two args for this command
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  MOVE.L    4(%A0),%A0                              | arg[1], console device A, B, P, or U
+                    MOVE.B    (%A0),%D1                               | Get first character
+                    BSR       toUpperChar
+
+                    CMPI.B    #DEV_SER_A,%D1
+                    BEQ       2f
+                    CMPI.B    #DEV_SER_B,%D1
+                    BEQ       2f
+                    CMPI.B    #DEV_PROP,%D1
+                    BEQ       2f
+                    CMPI.B    #DEV_USB,%D1
+                    BEQ       2f
+
+                    BRA       wrongArgs
+
+2:                  MOVE.B    %D1,%D0
+                    BSR       setIODevice
+                    RTS
+          .endif
+
           .ifdef              IS_68030
+*---------------------------------------------------------------------------------------------------------
+* Initialise a serial port
+*---------------------------------------------------------------------------------------------------------
 serialInitCmd:      CMPI.B    #2,%D0                                  | Needs two args to initialise a serial port
                     BEQ       1f
                     BRA       wrongArgs
@@ -675,20 +707,19 @@ serialInitCmd:      CMPI.B    #2,%D0                                  | Needs tw
                     MOVE.B    (%A0),%D1                               | Get first character
                     BSR       toUpperChar
 
-
-                    CMPI.B    #'A',%D1
+                    CMPI.B    #DEV_SER_A,%D1
                     BNE       2f
 
                     PUTS      strSerialInit
-                    PUTCH     #'A'
+                    PUTCH     #DEV_SER_A
                     BSR       serInitA
                     BRA       4f
 
-2:                  CMPI.B    #'B',%D1
+2:                  CMPI.B    #DEV_SER_B,%D1
                     BNE       3f
 
                     PUTS      strSerialInit
-                    PUTCH     #'B'
+                    PUTCH     #DEV_SER_B
                     BSR       serInitB
                     BRA       4f
 
@@ -697,7 +728,6 @@ serialInitCmd:      CMPI.B    #2,%D0                                  | Needs tw
           .endif
 
           .ifdef              IS_68030
-
 *---------------------------------------------------------------------------------------------------------
 * Serial port output command
 *---------------------------------------------------------------------------------------------------------
@@ -709,25 +739,25 @@ serialOutCmd:       CMPI.B    #2,%D0                                  | Needs tw
                     MOVE.B    (%A0),%D1                               | Get first character
                     BSR       toUpperChar
 
-                    CMPI.B    #'A',%D1
+                    CMPI.B    #DEV_SER_A,%D1
                     BNE       2f
 
                     PUTS      strSerialOut
-                    PUTCH     #'A'
+                    PUTCH     #DEV_SER_A
                     BSR       newLine
                     BSR       serOutA
                     BRA       5f
 
-2:                  CMPI.B    #'B',%D1
+2:                  CMPI.B    #DEV_SER_B,%D1
                     BNE       3f
 
                     PUTS      strSerialOut
-                    PUTCH     #'B'
+                    PUTCH     #DEV_SER_B
                     BSR       newLine
                     BSR       serOutB
                     BRA       5f
 
-3:                  CMPI.B    #'U',%D1
+3:                  CMPI.B    #DEV_USB,%D1
                     BNE       4f
 
                     PUTS      strSerialOut
@@ -752,25 +782,25 @@ serialLoopCmd:      CMPI.B    #2,%D0                                  | Needs tw
                     MOVE.B    (%A0),%D1                               | Get first character
                     BSR       toUpperChar
 
-                    CMPI.B    #'A',%D1
+                    CMPI.B    #DEV_SER_A,%D1
                     BNE       2f
 
                     PUTS      strSerialLoop
-                    PUTCH     #'A'
+                    PUTCH     #DEV_SER_A
                     BSR       newLine
                     BSR       loopA
                     BRA       5f
 
-2:                  CMPI.B    #'B',%D1
+2:                  CMPI.B    #DEV_SER_B,%D1
                     BNE       3f
 
                     PUTS      strSerialLoop
-                    PUTCH     #'B'
+                    PUTCH     #DEV_SER_B
                     BSR       newLine
                     BSR       loopB
                     BRA       5f
 
-3:                  CMPI.B    #'U',%D1
+3:                  CMPI.B    #DEV_USB,%D1
                     BNE       4f
 
                     PUTS      strSerialLoop

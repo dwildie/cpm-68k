@@ -21,21 +21,17 @@ serInitA:           MOVEM.L   %D0-%D1/%A0-%A1,-(%SP)
 * ----------------------------------------------------------------------------------
 * Output the byte (character) in D0 to the serial port a
 * ----------------------------------------------------------------------------------
-writeChA:           MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D1
-                    MOVE.L    #ZSCC_A_CTL,%A0
-                    MOVE.L    #ZSCC_A_DATA,%A1
-                    BSR       outch
-                    MOVEM.L   (%SP)+,%D1/%A0-%A1                      | < Restore D1
+writeChA:           MOVE.L    %D1,-(%SP)                              | > Save D1
+                    BSR       a_outch
+                    MOVE.L    (%SP)+,%D1                              | < Restore D1
                     RTS
 
 * ----------------------------------------------------------------------------------
 * Read a byte (character) from serial port a into D0
 * ----------------------------------------------------------------------------------
-readChA:            MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D1
-                    MOVE.L    #ZSCC_A_CTL,%A0
-                    MOVE.L    #ZSCC_A_DATA,%A1
-                    BSR       getch
-                    MOVEM.L   (%SP)+,%D1/%A0-%A1                      | < Restore D1
+readChA:            MOVE.L    %D1,-(%SP)                              | > Save D1
+                    BSR       a_inch
+                    MOVE.L    (%SP)+,%D1                              | < Restore D1
                     RTS
 
 * ----------------------------------------------------------------------------------
@@ -70,21 +66,17 @@ serInitB:           MOVEM.L   %D0-%D1/%A0-%A1,-(%SP)
 * ----------------------------------------------------------------------------------
 * Output the byte (character) in D0 to the serial port b
 * ----------------------------------------------------------------------------------
-writeChB:           MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D1
-                    MOVE.L    #ZSCC_B_CTL,%A0
-                    MOVE.L    #ZSCC_B_DATA,%A1
-                    BSR       outch
-                    MOVEM.L   (%SP)+,%D1/%A0-%A1                      | < Restore D1
+writeChB:           MOVE.L    %D1,-(%SP)                              | > Save D1
+                    BSR       b_outch
+                    MOVE.L    (%SP)+,%D1                              | < Restore D1
                     RTS
 
 * ----------------------------------------------------------------------------------
 * Read a byte (character) from serial port a into D0
 * ----------------------------------------------------------------------------------
-readChB:            MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D1
-                    MOVE.L    #ZSCC_B_CTL,%A0
-                    MOVE.L    #ZSCC_B_DATA,%A1
-                    BSR       getch
-                    MOVEM.L   (%SP)+,%D1/%A0-%A1                      | < Restore D1
+readChB:            MOVE.L    %D1,-(%SP)                              | > Save D1
+                    BSR       b_inch
+                    MOVE.L    (%SP)+,%D1                              | < Restore D1
                     RTS
 
 * ----------------------------------------------------------------------------------
@@ -110,29 +102,16 @@ serOutB:            MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D
 * ----------------------------------------------------------------------------------
 * Output the byte (character) in D0 to the serial port usb
 * ----------------------------------------------------------------------------------
-writeChUSB:         MOVEM.L   %D1,-(%SP)                              | > Save D1
-
-1:                  MOVE.B    USB_STATUS,%D1                          | Check TBE bit, must be zero
-                    AND.B     #USB_TBE,%D1
-                    TST.B     %D1
-                    BNE       1b
-
-                    MOVE.B    %D0,USB_DATA                            | Write char to the data port
-
-                    MOVEM.L   (%SP)+,%D1                              | < Restore D1
+writeChUSB:         MOVE.L    %D1,-(%SP)                              | > Save D1
+                    BSR       u_outch
+                    MOVE.L    (%SP)+,%D1                              | < Restore D1
                     RTS
 
 * ----------------------------------------------------------------------------------
 * Read a byte (character) from serial port usb into D0
 * ----------------------------------------------------------------------------------
 readChUSB:          MOVEM.L   %D1,-(%SP)                              | > Save D1
-
-1:                  MOVE.B    USB_STATUS,%D1                          | Check RDA bit, must be zero
-                    AND.B     #USB_RDA,%D1
-                    BNE       1b
-
-                    MOVE.B    USB_DATA,%D0                            | Read char from data port
-
+1:                  BSR       u_inch
                     MOVEM.L   (%SP)+,%D1                              | < Restore D1
                     RTS
 
