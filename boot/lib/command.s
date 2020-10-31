@@ -3,7 +3,7 @@
 
 lineBufferLen       =         60
 maxTokens           =         4
-                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd
+                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd,readPortCmd,writePortCmd
 *---------------------------------------------------------------------------------------------------------
                     .bss
                     .align(2)
@@ -25,6 +25,7 @@ dumpAddr:           ds.l      1
 cmdTable:                                                             | Array of command entries
                     CMD_TABLE_ENTRY "a", "a:", driveACmd, "a                  : Select drive A", 0
                     CMD_TABLE_ENTRY "b", "b:", driveBCmd, "b                  : Select drive B", 0
+                    CMD_TABLE_ENTRY "bt", "bt", bootCmd, "boot               : Boot from system tracks of current drive and partition", 0
                     CMD_TABLE_ENTRY "boot", "boot", bootCmd, "boot <file>        : Load S-Record <file> into memory and execute", 0
                     CMD_TABLE_ENTRY "dir", "ls", directoryCmd, "dir                : Display directory of current drive", 0
                     CMD_TABLE_ENTRY "def", "def", diskDefCmd, "def                : Display the CPM disk definition", 0
@@ -33,19 +34,26 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "help", "h", helpCmd, "help               : Display the list of commands", 0
                     CMD_TABLE_ENTRY "id", "id", idCmd, "id                 : Display the drive's id info", 0
                     CMD_TABLE_ENTRY "init", "init", initIdeDriveCmd, "init               : Initialise the current IDE drive", 0
+                    CMD_TABLE_ENTRY "irq", "q", irqMaskCmd, "irq                : Display or set the IRQ mask", 0
                     CMD_TABLE_ENTRY "key", "key", keyCmd, "key                : Display key strokes as ASCII, terminated by new line", 0
                     CMD_TABLE_ENTRY "lba", "lba", lbaCmd, "lba <val>          : Set selected drive's LBA value", 0
                     CMD_TABLE_ENTRY "mbr", "mbr", mbrCmd, "mbr                : Read the current drive's MBR partition table", 0
                     CMD_TABLE_ENTRY "mem", "mem", memDumpCmd, "mem <addr> <len>   : Display <len> bytes starting at <addr>", 0
                     CMD_TABLE_ENTRY "u", "u", memNextCmd, "u                  : Read the next memory block", 0
-                    CMD_TABLE_ENTRY "i", "i", memPrevCmd, "i                  : Read the next memory block", 0
-                    CMD_TABLE_ENTRY "irq", "q", irqMaskCmd, "irq                : Display or set the IRQ mask", 0
+                    CMD_TABLE_ENTRY "i", "i", memPrevCmd, "i                  : Read the previous memory block", 0
                     CMD_TABLE_ENTRY "part", "p", partitionCmd, "part <partId>      : Select partition <partId>", 0
+          .ifdef              IS_68030
+                    CMD_TABLE_ENTRY "pin", "pi", readPortCmd, "pin <port>         : Read from portNo", 0
+                    CMD_TABLE_ENTRY "pout", "po", writePortCmd, "pout <port> <byte> : Write byte to portNo", 0
+          .endif
                     CMD_TABLE_ENTRY "read", "r", readCmd, "read <lba>         : Read and display the drive sector at <lba>", 0
                     CMD_TABLE_ENTRY "readNext", ">", readNextCmd, ">                  : Increment LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                  : Decrement LBA, read and display the drive sector", 0
           .ifdef              IS_68030
                     CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs               : Display the registers", 0
+                    CMD_TABLE_ENTRY "sinit", "si", serialInitCmd, "sinit <[A|B]>      : Initialise serial port A or B", 0
+                    CMD_TABLE_ENTRY "sout", "so", serialOutCmd, "sout <[A|B|U]>     : Console out to serial port A, B or USB", 0
+                    CMD_TABLE_ENTRY "sloop", "sl", serialLoopCmd, "sloop <[A|B|U]>    : Loopback serial port A, B or USB", 0
           .endif
                     CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>         : Set the stack pointer to <addr> and restart", 0
           .ifdef              IS_68030
@@ -530,7 +538,7 @@ irqMaskCmd:         CMPI.B    #2,%D0                                  | Needs tw
                     CMPI.B    #1,%D0                                  | Needs one arg to show mask
                     BNE       wrongArgs
 
-                    PUTS      strIrqMask
+                    PUTS      strEqualsHex
                     MOVE      %SR,%D0                                 | Show current IRQ Mask
                     LSR       #8,%D0
                     AND       #0x7,%D0
@@ -566,7 +574,7 @@ sspCmd:             CMPI.B    #2,%D0                                  | Needs tw
                     CMPI.B    #1,%D0                                  | Needs one arge to show SP
                     BNE       wrongArgs
 
-                    PUTS      strStackPtr
+                    PUTS      strEqualsHex
                     MOVE.L    %SP,%D0                                 | Show current SP
                     BSR       writeHexLong
                     BSR       newLine
@@ -653,6 +661,185 @@ stackCmd:           MOVE.W    #0x1000,%D6
                     BRA       stackCmd
 
 6:                  RTS
+          .endif
+
+*---------------------------------------------------------------------------------------------------------
+* Initialise a serial port
+*---------------------------------------------------------------------------------------------------------
+          .ifdef              IS_68030
+serialInitCmd:      CMPI.B    #2,%D0                                  | Needs two args to initialise a serial port
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  MOVE.L    4(%A0),%A0                              | arg[1], serial port A or B
+                    MOVE.B    (%A0),%D1                               | Get first character
+                    BSR       toUpperChar
+
+
+                    CMPI.B    #'A',%D1
+                    BNE       2f
+
+                    PUTS      strSerialInit
+                    PUTCH     #'A'
+                    BSR       serInitA
+                    BRA       4f
+
+2:                  CMPI.B    #'B',%D1
+                    BNE       3f
+
+                    PUTS      strSerialInit
+                    PUTCH     #'B'
+                    BSR       serInitB
+                    BRA       4f
+
+3:                  BRA       wrongArgs
+4:                  RTS
+          .endif
+
+          .ifdef              IS_68030
+
+*---------------------------------------------------------------------------------------------------------
+* Serial port output command
+*---------------------------------------------------------------------------------------------------------
+serialOutCmd:       CMPI.B    #2,%D0                                  | Needs two args to loopback a serial port
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  MOVE.L    4(%A0),%A0                              | arg[1], serial port A, B or U
+                    MOVE.B    (%A0),%D1                               | Get first character
+                    BSR       toUpperChar
+
+                    CMPI.B    #'A',%D1
+                    BNE       2f
+
+                    PUTS      strSerialOut
+                    PUTCH     #'A'
+                    BSR       newLine
+                    BSR       serOutA
+                    BRA       5f
+
+2:                  CMPI.B    #'B',%D1
+                    BNE       3f
+
+                    PUTS      strSerialOut
+                    PUTCH     #'B'
+                    BSR       newLine
+                    BSR       serOutB
+                    BRA       5f
+
+3:                  CMPI.B    #'U',%D1
+                    BNE       4f
+
+                    PUTS      strSerialOut
+                    PUTS      strUSB
+                    BSR       newLine
+                    BSR       serOutUSB
+                    BRA       5f
+
+4:                  BRA       wrongArgs
+5:                  RTS
+          .endif
+
+          .ifdef              IS_68030
+*---------------------------------------------------------------------------------------------------------
+* Serial port loopback command
+*---------------------------------------------------------------------------------------------------------
+serialLoopCmd:      CMPI.B    #2,%D0                                  | Needs two args to loopback a serial port
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  MOVE.L    4(%A0),%A0                              | arg[1], serial port A, B or U
+                    MOVE.B    (%A0),%D1                               | Get first character
+                    BSR       toUpperChar
+
+                    CMPI.B    #'A',%D1
+                    BNE       2f
+
+                    PUTS      strSerialLoop
+                    PUTCH     #'A'
+                    BSR       newLine
+                    BSR       loopA
+                    BRA       5f
+
+2:                  CMPI.B    #'B',%D1
+                    BNE       3f
+
+                    PUTS      strSerialLoop
+                    PUTCH     #'B'
+                    BSR       newLine
+                    BSR       loopB
+                    BRA       5f
+
+3:                  CMPI.B    #'U',%D1
+                    BNE       4f
+
+                    PUTS      strSerialLoop
+                    PUTS      strUSB
+                    BSR       newLine
+                    BSR       loopUSB
+                    BRA       5f
+
+4:                  BRA       wrongArgs
+5:                  RTS
+          .endif
+
+          .ifdef              IS_68030
+*---------------------------------------------------------------------------------------------------------
+* Read port command
+*---------------------------------------------------------------------------------------------------------
+readPortCmd:        CMPI.B    #2,%D0                                  | Needs two args to read a port
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  PUTS      strReadPort
+
+                    MOVE.L    4(%A0),%A0                              | arg[1], port number
+                    BSR       asciiToLong                             | value returned in D0
+                    ADD.L     #__ports_start__,%D0                    | Add port number to start of port range
+
+                    BSR       writeHexLong
+                    PUTS      strEqualsHex
+
+                    MOVE.L    %D0,%A0                                 | Read from the port
+                    MOVE.B    (%A0),%D0
+
+                    BSR       writeHexByte
+                    BSR       newLine
+
+                    RTS
+          .endif
+
+          .ifdef              IS_68030
+*---------------------------------------------------------------------------------------------------------
+* Write port command
+*---------------------------------------------------------------------------------------------------------
+writePortCmd:       CMPI.B    #3,%D0                                  | Needs three args to write a port
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  MOVE.L    %A0,%A1
+
+                    PUTS      strWritePortA
+
+                    MOVE.L    8(%A1),%A0                              | arg[2], data byte
+                    BSR       asciiToLong                             | value returned in D0
+
+                    BSR       writeHexByte
+                    PUTS      strWritePortB
+
+                    MOVE.B    %D0,%D1
+
+                    MOVE.L    4(%A1),%A0                              | arg[1], port number
+                    BSR       asciiToLong                             | value returned in D0
+                    ADD.L     #__ports_start__,%D0                    | Add port number to start of port range
+
+                    BSR       writeHexLong
+                    BSR       newLine
+
+                    MOVE.L    %D0,%A0                                 | Write the data byte to the port
+                    MOVE.B    %D1,(%A0)
+
+                    RTS
           .endif
 
 *---------------------------------------------------------------------------------------------------------
@@ -771,8 +958,16 @@ strBootLoaderError: .asciz    "Boot failed\r\n"
 strCurrentWaitParameter: .asciz "\r\nCurrent wait parameter: 0x"
 strNewWaitParameter: .asciz   "\r\nNew wait parameter:     0x"
 strInvalidValue:    .asciz    "\r\nInvalid value\r\n"
-strStackPtr:        .asciz    " = 0x"
+strEqualsHex:       .asciz    " = 0x"
+
+          .ifdef              IS_68030
 strStackErr1:       .asciz    "Stack error, expected 0x"
 strStackErr2:       .asciz    ", read 0x"
-strIrqMask:         .asciz    " = 0x"
-
+strReadPort:        .asciz    "\r\nRead from port 0x"
+strWritePortA:      .asciz    "\r\nWrite 0x"
+strWritePortB:      .asciz    " to port 0x"
+strSerialInit:      .asciz    "\r\nInitialising serial port "
+strSerialLoop:      .asciz    "\r\nLoopback serial port "
+strSerialOut:       .asciz    "\r\nOutput to serial port "
+strUSB:             .asciz    "USB\r\n"
+          .endif
