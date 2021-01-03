@@ -62,8 +62,9 @@ b_inch:             MOVE.B    ZSCC_B_CTL,%D1                          | Get the 
 * ----------------------------------------------------------------------------------
 * Get a usb port input status in %D0, Z= nothing, 2 = char present
 * ----------------------------------------------------------------------------------
-u_keystat:          MOVE.B    ZSCC_A_CTL,%D0                          | Get a keyboard status in %D0, Z= nothing, 2 = char present
-                    AND.B     #SER_RDA,%D0
+u_keystat:          MOVE.B    USB_STATUS,%D0                          | Get a keyboard status in %D0, Z= nothing, 2 = char present
+                    AND.B     #USB_RDA,%D0
+                    EOR.B     #USB_RDA,%D0
                     RTS
 
 * ----------------------------------------------------------------------------------

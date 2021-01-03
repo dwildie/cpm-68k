@@ -114,7 +114,7 @@ asciiToLong:        MOVEM.L   %A0/%D1-%D2,-(%SP)
 
 4:                  MOVE.L    #0xFFFFFFFF,%D0               | mark 0 digits
 5:                  MOVEM.L   (%SP)+,%A0/%D1-%D2
-                    rts
+                    RTS
 
 *-----------------------------------------------------------------------------------------------------
 * asciiToByte(*str)

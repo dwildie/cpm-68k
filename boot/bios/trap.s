@@ -2,7 +2,7 @@
 
                     .text
 
-                    .global   biosHandler
+                    .global   biosHandler,consoleStatus
 
 *-----------------------------------------------------------------------------------------------------
 * Trap 15 - Handle calls from the bios

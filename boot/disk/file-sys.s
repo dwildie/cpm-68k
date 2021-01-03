@@ -293,5 +293,5 @@ getFileSysType:     LINK      %FP,#-2
                     
                     .align(2)
 strRootDir:         .asciz    "/"
-strUnsupportedType: .asciz    "\r\nUnsupported partition type\rn\n"
+strUnsupportedType: .asciz    "\r\nUnsupported partition type\r\n"
 

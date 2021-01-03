@@ -11,10 +11,38 @@ device:             .byte     DEV_PROP
 * ----------------------------------------------------------------------------------
                     .text
 
+                    .global   ioInit
                     .global   setIODevice
                     .global   keystat
                     .global   outch
                     .global   inch
+
+* ----------------------------------------------------------------------------------
+* Initialise the IO subsytem
+* ----------------------------------------------------------------------------------
+ioInit:             MOVE.B    IOBYTE,%D0
+                    AND.B     #0x03,%D0
+
+                    CMPI.B    #IO_USB,%D0
+                    BNE       1f
+
+                    MOVE.B    #DEV_USB,%D0                            | Use the USB port
+                    BRA       setIODevice
+
+1:                  CMPI.B    #IO_SER_A,%D0
+                    BNE       2f
+
+                    MOVE.B    #DEV_SER_A,%D0                          | Use serial port a
+                    BRA       setIODevice
+
+2:                  CMPI.B    #IO_SER_B,%D0
+                    BNE       3f
+
+                    MOVE.B    #DEV_SER_B,%D0                          | Use serial port b
+                    BRA       setIODevice
+
+3:                  MOVE.B    #DEV_PROP,%D0                           | Default is propeller console
+                    BRA       setIODevice
 
 * ----------------------------------------------------------------------------------
 * Set the current IO device, device is specified in %DO.B

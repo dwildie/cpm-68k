@@ -2,6 +2,7 @@
                     .include  "include/ascii.i"
 
                     .global   loadRecordFile
+                    .global   processCount,processHeader,processData                            | ********* DEBUG
 
 MAX_REC_SIZE        =         0x100
 MAX_DATA_SIZE       =         0x80
@@ -50,7 +51,10 @@ readRecord:         LINK      %FP,#-(MAX_DATA_SIZE+MAX_REC_SIZE)
                     MOVE.W    #1,-(%SP)
                     BSR       fRead
                     ADDQ.L    #6,%SP
-                    BEQ       eof                                     | No more chars ? must be end of file
+                    BEQ       eof                                     | No more chars ?, must be end of file
+
+                    CMPI.L    #0xFFFFFFFF,%D0                         | FAT file will return -1
+                    BEQ       eof
 
                     CMPI.B    #CTRLZ,(%A1)                            | Ctrl-Z = end of file
                     BEQ       eof

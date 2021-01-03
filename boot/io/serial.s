@@ -1,13 +1,14 @@
           .ifdef              IS_68030
                     .include  "include/serial.i"
                     .include  "include/ascii.i"
+                    .include  "include/macros.i"
 
 * ----------------------------------------------------------------------------------
                     .text
 
-                    .global   serInitA,writeChA,readChA,loopA,serOutA
-                    .global   serInitB,writeChB,readChB,loopB,serOutB
-                    .global   writChUSB,readChUSB,loopUSB,serOutUSB
+                    .global   serInitA,serStatusA,serCmdA,serValA,writeChA,readChA,loopA,serOutA
+                    .global   serInitB,serStatusB,serCmdB,serValB,writeChB,readChB,loopB,serOutB
+                    .global   serStatusUSB,writChUSB,readChUSB,loopUSB,serOutUSB
 
 * ----------------------------------------------------------------------------------
 * Initialise serial port a
@@ -17,6 +18,24 @@ serInitA:           MOVEM.L   %D0-%D1/%A0-%A1,-(%SP)
                     BSR       serInit
                     MOVEM.L   (%SP)+,%D0-%D1/%A0-%A1
                     RTS
+
+* ----------------------------------------------------------------------------------
+* Display status of serial port a
+* ----------------------------------------------------------------------------------
+serStatusA:         MOVE.L    #ZSCC_A_CTL,%A0
+                    BRA       serStatus
+
+* ----------------------------------------------------------------------------------
+* Output the byte in D0 to the command register D1 for serial port a
+* ----------------------------------------------------------------------------------
+serCmdA:            MOVE.L    #ZSCC_A_CTL,%A0
+                    BRA       serCmd
+
+* ----------------------------------------------------------------------------------
+* Retrieve the value in D0, of the control register in D1, for serial port a
+* ----------------------------------------------------------------------------------
+serValA:            MOVE.L    #ZSCC_A_CTL,%A0
+                    BRA       serVal
 
 * ----------------------------------------------------------------------------------
 * Output the byte (character) in D0 to the serial port a
@@ -64,6 +83,24 @@ serInitB:           MOVEM.L   %D0-%D1/%A0-%A1,-(%SP)
                     RTS
 
 * ----------------------------------------------------------------------------------
+* Display status of serial port b
+* ----------------------------------------------------------------------------------
+serStatusB:         MOVE.L    #ZSCC_B_CTL,%A0
+                    BRA       serStatus
+
+* ----------------------------------------------------------------------------------
+* Output the byte in D0 to the command register D1 for the serial port b
+* ----------------------------------------------------------------------------------
+serCmdB:            MOVE.L    #ZSCC_B_CTL,%A0
+                    BRA       serCmd
+
+* ----------------------------------------------------------------------------------
+* Retrieve the value in D0, of the control register in D1, for serial port b
+* ----------------------------------------------------------------------------------
+serValB:            MOVE.L    #ZSCC_B_CTL,%A0
+                    BRA       serVal
+
+* ----------------------------------------------------------------------------------
 * Output the byte (character) in D0 to the serial port b
 * ----------------------------------------------------------------------------------
 writeChB:           MOVE.L    %D1,-(%SP)                              | > Save D1
@@ -98,6 +135,27 @@ serOutB:            MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D
                     BSR       serOut
                     MOVEM.L   (%SP)+,%D1/%A0-%A1                      | < Restore D1
                     RTS
+
+* ----------------------------------------------------------------------------------
+* Display status of USB port a
+* ----------------------------------------------------------------------------------
+serStatusUSB:       MOVE.B    USB_STATUS,%D3
+
+                    PUTS      strRDA
+                    BTST      #USB_RDA,%D3
+                    BNE       1f
+                    PUTCH     #'1'
+                    BRA       2f
+1:                  PUTCH     #'0'
+
+2:                  PUTS      strTBE
+                    BTST      #USB_TBE,%D3
+                    BNE       1f
+                    PUTCH     #'1'
+                    BRA       2f
+1:                  PUTCH     #'0'
+
+2:                  RTS
 
 * ----------------------------------------------------------------------------------
 * Output the byte (character) in D0 to the serial port usb
@@ -182,22 +240,16 @@ serOut:             BSR       readCh                                  | Read a c
 * ----------------------------------------------------------------------------------
 * Read a character from a serial port
 * ----------------------------------------------------------------------------------
-getch:              MOVE.B    (%A0),%D1                               | Get the status in %D1
-                    AND.B     #SER_RDA,%D1
-                    TST.B     %D1                                     | Are we ready
+getch:              BTST      #ZSCC_RDA,(%A0)                         | Wait until the RDA bit is set
                     BEQ       getch
-
                     MOVE.B    (%A1),%D0                               | Get ASCII (in %D0) from hardware port
                     RTS                                               | Return from subroutine, input char is in %D0
 
 * ----------------------------------------------------------------------------------
 * Output the character in %D0.B
 * ----------------------------------------------------------------------------------
-outch:              MOVE.B    (%A0),%D1                               | Check CRT status is ready to receive character
-                    AND.B     #SER_TBE,%D1
-                    TST.B     %D1
+outch:              BTST      #ZSCC_TBE,(%A0)                         | Wait until the TBE bit is set
                     BEQ       outch
-
                     MOVE.B    %D0,(%A1)                               | Output ASCII (in %D0) to hardware port 01H
                     RTS
 
@@ -222,44 +274,129 @@ loopBack:           BSR       getch                                   | Wait for
 2:                  RTS
 
 * ----------------------------------------------------------------------------------
-* Initialise the serial port using the controle port in D0
+* Output the value in D0, for the control register in D1, for the control port in A0
 * ----------------------------------------------------------------------------------
-serInit:            MOVE.L    #initCmdLen,%D0                         | Byte count of init commands
+serCmd:             MOVE.B    (%A0),%D2                               | Read cmd register to clear register select
+                    BSR       shortDelay
+                    MOVE.B    %D1,(%A0)                               | Select register
+                    BSR       shortDelay
+                    MOVE.B    %D0,(%A0)                               | Write to selected register
+                    RTS
+
+* ----------------------------------------------------------------------------------
+* Retrieve the value in D0, of the control register in D1, for the control port in A0
+* ----------------------------------------------------------------------------------
+serVal:             MOVE.B    (%A0),%D0                               | Read cmd register to clear register select         
+                    BSR       shortDelay
+                    MOVE.B    %D1,(%A0)                               | Select register
+                    BSR       shortDelay
+                    MOVE.B    (%A0),%D0                               | Read from selected register
+                    RTS
+
+shortDelay:         MOVE.L    %D0,-(%SP)
+                    MOVE.L    #0x2,%D0
+1:                  SUB.L     #0x1,%D0
+                    BNE       1b
+                    MOVE.L    (%SP)+, %D0
+                    RTS
+
+* ----------------------------------------------------------------------------------
+* Display the serial port status using the controle port in A0
+* ----------------------------------------------------------------------------------
+serStatus:          MOVE.B    (%A0),%D3
+
+                    PUTS      strRDA
+                    BTST      #ZSCC_RDA,%D3
+                    BEQ       1f
+                    PUTCH     #'1'
+                    BRA       2f
+1:                  PUTCH     #'0'
+
+2:                  PUTS      strTBE
+                    BTST      #ZSCC_TBE,%D3
+                    BEQ       1f
+                    PUTCH     #'1'
+                    BRA       2f
+1:                  PUTCH     #'0'
+
+2:                  PUTS      strDCD
+                    BTST      #ZSCC_DCD,%D3
+                    BEQ       1f
+                    PUTCH     #'1'
+                    BRA       2f
+1:                  PUTCH     #'0'
+
+2:                  PUTS      strCTS
+                    BTST      #ZSCC_CTS,%D3
+                    BEQ       1f
+                    PUTCH     #'1'
+                    BRA       2f
+1:                  PUTCH     #'0'
+
+2:                  RTS
+
+* ----------------------------------------------------------------------------------
+* Initialise the serial port using the controle port in A0
+* ----------------------------------------------------------------------------------
+serInit:            MOVE.B    (%A0),%D0                               | Read cmd register to clear register select
+                    MOVE.L    #initCmdLen,%D0                         | Byte count of init commands
                     LEA       initCmds,%A1                            | Start of SCCINIT table
-1:                  MOVE.B    (%A1)+,%D1                              | Table of Zilog SCC Initilization values
-                    MOVE.B    %D1,(%A0)                               | Program the SCC Channel B (A1,A3 or 10,12H) for 19K Baud
-                    SUB.B     #1,%D0                                  | All 14 values
+1:                  MOVE.B    (%A1)+,(%A0)                            | Table of Zilog SCC Initilization values, program for 38.4K Baud
+                    SUB.B     #1,%D0                                  | All values
                     TST.B     %D0
                     BNE       1b
                     RTS
 
 * ----------------------------------------------------------------------------------
-initCmds:           dc.b      0x04                                    | Point to WR4
-                    dc.b      0x44                                    | X16 clock,1 Stop,NP
+*
+*
+* ----------------------------------------------------------------------------------
+initCmds:
+*                    dc.b      0x00,0x00                               | pointer reset
+*                    dc.b      0x09,0xC0                               | hardware reset
+*                    dc.b      0x04,0x44                               | 16x clock, async, 1 stop, no par
+*                    dc.b      0x01,0x00                               | no dma, no interrupts
+*                    dc.b      0x02,0x00                               | clear int vector
+*                    dc.b      0x03,0xC0                               | rx 8 bits, disabled
+*                    dc.b      0x05,0x60                               | tx 8 bits, disabled
+*                    dc.b      0x09,0x01                               | status low, no interrupts
+*                    dc.b      0x0A,0x00                               | nrz encoding
+*                    dc.b      0x0B,0x56                               | Recieve/transmit clock = BRG
+*                    dc.b      0x0C,0x02                               | time constant low byte (38,400)
+*                    dc.b      0x0D,0x00                               | time constant high byte(38,400)
+*                    dc.b      0x0E,0x00                               | BRG source RTxC
+*                    dc.b      0x0E,0x80                               | clock source BRG
+*                    dc.b      0x0E,0x01                               | enable BRG
+*                    dc.b      0x0F,0x00                               | no ints
+*                    dc.b      0x10,0x10                               | reset interrupts
+*                    dc.b      0x01,0x12                               | enable Tx int, enable rx int on all chars
+*                    dc.b      0x09,0x09                               | Master interrupt enable, vector includes status
+*                    dc.b      0x03,0xC1                               | enable Rx
+*                    dc.b      0x05,0x68                               | enable Tx
+*                    dc.b      0x00,0x00                               | overflow
 
-                    dc.b      0x03                                    | Point to WR3
-                    dc.b      0xC1                                    | Enable reciever, Auto Enable, Recieve 8 bits
-
-                    dc.b      0x05                                    | Point to WR5
-                    dc.b      0xEA                                    | Enable, Transmit 8 bits
-
-                    dc.b      0x0B                                    | Point to WR11
-                    dc.b      0x56                                    | Recieve/transmit clock = BRG
-
-                    dc.b      0x0C                                    | Point to WR12
-                    dc.b      0x02                                    | Low byte 38,400 Baud
-
-                    dc.b      0x0D                                    | Point to WR13
-                    dc.b      0x00                                    | High byte for Baud
-
-                    dc.b      0x0E                                    | Point to WR14
-                    dc.b      0x01                                    | Use 4.9152 MHz Clock. Note SD Systems uses a 2.4576 MHz clock, enable BRG
-
-                    dc.b      0x0F                                    | Point to WR15
-                    dc.b      0x00                                    | Generate Int with CTS going high
+                    dc.b      0x09, 0xC0                              | WR9:  hardware reset
+                    dc.b      0x04, 0x44                              | WR4:  X16 clock, 1 Stop, NP
+                    dc.b      0x0B, 0x56                              | WR11: Receive/transmit clock = BRG
+                    dc.b      0x0C, 0x02                              | WR12: Low byte 38,400 Baud
+                    dc.b      0x0D, 0x00                              | WR13: High byte for Baud
+                    dc.b      0x0E, 0x01                              | WR14: Use 4.9152 MHz Clock, enable BRG
+                    dc.b      0x01, 0x12                              | WR1:  Enable Tx int, enable Rx int on all chars
+*                    dc.b      0x09, 0x09                              | WR9:  Master int enable, vector includes status
+                    dc.b      0x03, 0xC1                              | WR3:  Enable Rx, 8 bits, RTS/CTS/DCD auto enabled 
+                    dc.b      0x05, 0xEA                              | WR5:  Enable TX, 8 bits, assert DTR & CTS
 initCmdsEnd:
 
 initCmdLen          =         initCmdsEnd - initCmds
+
+*---------------------------------------------------------------------------------------------------------
+                    .section  .rodata.strings
+                    .align(2)
+
+strRDA:             .asciz    ": RDA="
+strTBE:             .asciz    ", TBE="
+strDCD:             .asciz    ", DCD="
+strCTS:             .asciz    ", CTS="
 
           .endif
 

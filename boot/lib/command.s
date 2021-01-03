@@ -4,7 +4,7 @@
 
 lineBufferLen       =         60
 maxTokens           =         4
-                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd,readPortCmd,writePortCmd
+                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd,readPortCmd,writePortCmd,bootCromixCmd,serialCmdCmd
 *---------------------------------------------------------------------------------------------------------
                     .bss
                     .align(2)
@@ -26,10 +26,12 @@ dumpAddr:           ds.l      1
 cmdTable:                                                             | Array of command entries
                     CMD_TABLE_ENTRY "a", "a:", driveACmd, "a                   : Select drive A", 0
                     CMD_TABLE_ENTRY "b", "b:", driveBCmd, "b                   : Select drive B", 0
-                    CMD_TABLE_ENTRY "bt", "bt", bootCmd, "boot                : Boot from system tracks of current drive and partition", 0
-                    CMD_TABLE_ENTRY "boot", "boot", bootCmd, "boot <file>         : Load S-Record <file> into memory and execute", 0
           .ifdef              IS_68030
                     CMD_TABLE_ENTRY "console", "con", setConsoleCmd, "console <[A|B|P|U]> : Set the console device", 0
+          .endif
+                    CMD_TABLE_ENTRY "cpm", "cpm", bootCpmCmd, "boot <file>         : Load CP/M S-Record <file> into memory and execute", 0
+          .ifdef              IS_68030
+                    CMD_TABLE_ENTRY "cromix", "cro", bootCromixCmd, "cromix <file>       : Load cromix.sys S-Record <file> into memory and execute", 0
           .endif
                     CMD_TABLE_ENTRY "dir", "ls", directoryCmd, "dir                 : Display directory of current drive", 0
                     CMD_TABLE_ENTRY "def", "def", diskDefCmd, "def                 : Display the CPM disk definition", 0
@@ -38,7 +40,9 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "help", "h", helpCmd, "help                : Display the list of commands", 0
                     CMD_TABLE_ENTRY "id", "id", idCmd, "id                  : Display the drive's id info", 0
                     CMD_TABLE_ENTRY "init", "init", initIdeDriveCmd, "init                : Initialise the current IDE drive", 0
-                    CMD_TABLE_ENTRY "irq", "q", irqMaskCmd, "irq                 : Display or set the IRQ mask", 0
+                    CMD_TABLE_ENTRY "irqm", "qm", irqMaskCmd, "irqm                : Display or set the IRQ mask", 0
+                    CMD_TABLE_ENTRY "irqc", "qc", showIrqCountsCmd, "irqc                : Display the IRQ counts", 0
+                    CMD_TABLE_ENTRY "irqz", "qz", zeroIrqCountsCmd, "irqz                : Zero the IRQ counts", 0
                     CMD_TABLE_ENTRY "key", "key", keyCmd, "key                 : Display key strokes as ASCII, terminated by new line", 0
                     CMD_TABLE_ENTRY "lba", "lba", lbaCmd, "lba <val>           : Set selected drive's LBA value", 0
                     CMD_TABLE_ENTRY "mbr", "mbr", mbrCmd, "mbr                 : Read the current drive's MBR partition table", 0
@@ -55,9 +59,11 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                   : Decrement LBA, read and display the drive sector", 0
           .ifdef              IS_68030
                     CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs                : Display the registers", 0
+                    CMD_TABLE_ENTRY "scmd", "sc", serialCmdCmd, "scmd <[A|B]> Reg Val: Send Val to register Reg for port A, B", 0
                     CMD_TABLE_ENTRY "sinit", "si", serialInitCmd, "sinit <[A|B]>       : Initialise serial port A or B", 0
-                    CMD_TABLE_ENTRY "sout", "so", serialOutCmd, "sout <[A|B|U]>      : Console out to serial port A, B or USB", 0
                     CMD_TABLE_ENTRY "sloop", "sl", serialLoopCmd, "sloop <[A|B|U]>     : Loopback serial port A, B or USB", 0
+                    CMD_TABLE_ENTRY "sout", "so", serialOutCmd, "sout <[A|B|U]>      : Console out to serial port A, B or USB", 0
+                    CMD_TABLE_ENTRY "sstat", "ss", serialStatusCmd, "sstat <[A|B|U]>     : Get the status of serial port A, B or USB", 0
           .endif
                     CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>          : Set the stack pointer to <addr> and restart", 0
           .ifdef              IS_68030
@@ -394,9 +400,31 @@ diskDefCmd:         BSR       showDiskDef
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
+* Boot cromix
+*---------------------------------------------------------------------------------------------------------
+bootCromixCmd:      CMPI.B    #2,%D0                                  | Needs one or two args
+                    BGT       wrongArgs
+                    BEQ       1f
+
+                    BSR       cromixBootLoader
+                    BRA       2f
+
+1:                  MOVE.L    4(%A0),-(%SP)                           | Argument specifies the SRecord file
+                    BSR       loadRecordFile                          | Will return start address in %D0
+                    ADDQ.L    #4,%SP
+
+2:                  PUTS      strBootingCromix
+
+                    MOVE.L    0x0,%SP                                 | Load the stack pointer
+                    MOVE.L    0x04,%A0                                | Get the start address
+                    JMP       (%A0)                                   | Start cromix
+
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
 * Load the arg[1] file into memory and execute
 *---------------------------------------------------------------------------------------------------------
-bootCmd:            BSR       newLine
+bootCpmCmd:         BSR       newLine
 
                     CMPI.B    #2,%D0                                  | Is there a file specified
                     BLT       loader                                  | No, try and read the boot loader from the system tracks
@@ -414,7 +442,7 @@ bootCmd:            BSR       newLine
                     PUTS      strFileNotFound
                     BRA       1f
 
-loader:             BSR       loadBootLoader                          | Call the boot loader
+loader:             BSR       cpmBootLoader                           | Call the CP/M boot loader
 
                     PUTS      strBootLoaderError                      | Should never return
 1:                  RTS
@@ -543,23 +571,28 @@ irqMaskCmd:         CMPI.B    #2,%D0                                  | Needs tw
                     BNE       wrongArgs
 
                     PUTS      strEqualsHex
-                    MOVE      %SR,%D0                                 | Show current IRQ Mask
-                    LSR       #8,%D0
-                    AND       #0x7,%D0
+                    BSR       getIrqMask
                     BSR       writeHexDigit
                     BSR       newLine
                     BRA       2f
 
 1:                  MOVE.L    4(%A0),%A0                              | arg[1], irq mask
                     BSR       asciiToLong
-                    AND       #0x7,%D0                                | 3 least significant bits
-                    LSL       #8,%D0
-                    MOVE      %SR,%D1
-                    AND       #0xF800,%D1
-                    OR        %D0,%D1
-                    MOVE      %D1,%SR
+                    BSR       setIrqMask
 
 2:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Display the current IRQ count values
+*---------------------------------------------------------------------------------------------------------
+showIrqCountsCmd:   BSR       showIrqCounts
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Zero the IRQ count values
+*---------------------------------------------------------------------------------------------------------
+zeroIrqCountsCmd:   BSR       zeroIrqCounts
+                    RTS
 
           .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
@@ -713,21 +746,131 @@ serialInitCmd:      CMPI.B    #2,%D0                                  | Needs tw
                     PUTS      strSerialInit
                     PUTCH     #DEV_SER_A
                     BSR       serInitA
+                    BRA       3f
+
+2:                  CMPI.B    #DEV_SER_B,%D1
+                    BNE       wrongArgs
+
+                    PUTS      strSerialInit
+                    PUTCH     #DEV_SER_B
+                    BSR       serInitB
+
+3:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Display the status of the serial port
+*---------------------------------------------------------------------------------------------------------
+serialStatusCmd:    CMPI.B    #2,%D0                                  | Needs two args 
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  MOVE.L    4(%A0),%A0                              | arg[1], serial port A, B or U
+                    MOVE.B    (%A0),%D1                               | Get first character
+                    BSR       toUpperChar
+
+                    CMPI.B    #DEV_SER_A,%D1
+                    BNE       2f
+
+                    PUTS      strSerialStatus
+                    PUTCH     #DEV_SER_A
+                    BSR       serStatusA
+
                     BRA       4f
 
 2:                  CMPI.B    #DEV_SER_B,%D1
                     BNE       3f
 
-                    PUTS      strSerialInit
+                    PUTS      strSerialStatus
                     PUTCH     #DEV_SER_B
-                    BSR       serInitB
+                    BSR       serStatusB
+
                     BRA       4f
 
-3:                  BRA       wrongArgs
-4:                  RTS
-          .endif
+3:                  CMPI.B    #DEV_USB,%D1
+                    BNE       wrongArgs
 
-          .ifdef              IS_68030
+                    PUTS      strSerialStatus
+                    PUTCH     #DEV_USB
+                    BSR       serStatusUSB
+                    
+4:                  BSR       newLine
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Set or get the control register value for a serial port
+*---------------------------------------------------------------------------------------------------------
+serialCmdCmd:       MOVE.L    %A0,%A1
+
+                    CMPI.B    #4,%D0                                  | Needs four args to set a register value
+                    BEQ       serialCmdSet
+
+                    CMPI.B    #3,%D0                                  | Needs three args to get a register value
+                    BEQ       serialCmdGet
+
+                    BRA       wrongArgs
+
+*---------------------------------------------------------------------------------------------------------
+* Set the control register value for a serial port
+*---------------------------------------------------------------------------------------------------------
+serialCmdSet:       MOVE.L    0x8(%A1),%A0                            | arg[2], register byte
+                    BSR       asciiToLong                             | value returned in D0
+                    MOVE.B    %D0,%D7
+
+                    MOVE.L    0xC(%A1),%A0                            | arg[3], value byte
+                    BSR       asciiToLong                             | value returned in D0
+                    MOVE.B    %D0,%D6
+
+                    MOVE.L    4(%A1),%A0                              | arg[1], serial port A or B
+                    MOVE.B    (%A0),%D1                               | Get first character
+                    BSR       toUpperChar
+
+                    CMPI.B    #DEV_SER_A,%D1
+                    BNE       1f
+
+                    MOVE.B    %D6,%D0
+                    MOVE.B    %D7,%D1
+                    BRA       serCmdA
+
+1:                  CMPI.B    #DEV_SER_B,%D1
+                    BNE       2f
+
+                    MOVE.B    %D6,%D0
+                    MOVE.B    %D7,%D1
+                    BRA       serCmdB
+
+2:                  BRA       wrongArgs
+
+*---------------------------------------------------------------------------------------------------------
+* Get the control register value for a serial port
+*---------------------------------------------------------------------------------------------------------
+serialCmdGet:       MOVE.L    0x8(%A1),%A0                            | arg[2], register byte
+                    BSR       asciiToLong                             | value returned in D0
+                    MOVE.B    %D0,%D7
+
+                    MOVE.L    4(%A1),%A0                              | arg[1], serial port A or B
+                    MOVE.B    (%A0),%D1                               | Get first character
+                    BSR       toUpperChar
+
+                    CMPI.B    #DEV_SER_A,%D1
+                    BNE       1f
+
+                    MOVE.B    %D7,%D1
+                    BSR       serValA
+                    BRA       2f
+
+1:                  CMPI.B    #DEV_SER_B,%D1
+                    BNE       3f
+
+                    MOVE.B    %D7,%D1
+                    BSR       serValB
+
+2:                  BSR       newLine
+                    BSR       writeHexByte
+                    BSR       newLine
+                    RTS
+
+3:                  BRA       wrongArgs
+
 *---------------------------------------------------------------------------------------------------------
 * Serial port output command
 *---------------------------------------------------------------------------------------------------------
@@ -997,7 +1140,9 @@ strReadPort:        .asciz    "\r\nRead from port 0x"
 strWritePortA:      .asciz    "\r\nWrite 0x"
 strWritePortB:      .asciz    " to port 0x"
 strSerialInit:      .asciz    "\r\nInitialising serial port "
+strSerialStatus:    .asciz    "\r\nStatus of serial port "
 strSerialLoop:      .asciz    "\r\nLoopback serial port "
 strSerialOut:       .asciz    "\r\nOutput to serial port "
 strUSB:             .asciz    "USB\r\n"
+strBootingCromix:   .asciz    "\r\nBooting cromix ...\r\n"
           .endif

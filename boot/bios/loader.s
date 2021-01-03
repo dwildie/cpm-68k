@@ -3,16 +3,76 @@
                     .include  "include/macros.i"
 
                     .text
-                    .global   loadBootLoader
+                    .global   cpmBootLoader
+                    .global   cromixBootLoader
 
 
 LOAD_ADDRESS        =         0xFE0000
 BOOT_SECTORS        =         DEF_DD_BOOT_TRACKS * DEF_DD_SEC_TRK
 
 *-----------------------------------------------------------------------------------------------------
-* loadBootLoader
+* cromixBootLoader
 *-----------------------------------------------------------------------------------------------------
-loadBootLoader:     LINK      %FP,#-2                                 | local variable - word driveId
+cromixBootLoader:   MOVE.W    currentDrive,-(%SP)
+                    BSR       hasValidTable                           | Does this drive have a MBR partition table 
+                    ADD       #2,%SP
+                    TST.W     %D0
+                    BNE       1f
+
+                    MOVE.W    currentDrive,-(%SP)                     | Has partitions, get the offset to the start of the current partition
+                    BSR       getPartitionId                          | Get the drive's current partition
+                    ADD       #2,%SP
+
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)
+                    MOVE.W    currentDrive,%D0                        | driveId
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)
+                    BSR       getPartitionStart                       | Get the offset (in sectors) to the start of the partition
+                    ADD       #8,%SP
+                    BRA       2f
+
+1:                  MOVE.L    #0,%D0                                  | No Partitions, use the entire disk
+
+2:                  MOVE.L    %D0,%D7
+                    BSR       setLBA                                  | Read the first sector of the patition/disk to get the disk parameters
+                    MOVE.L    #1,%D0                                  | One sector
+                    LEA       __free_ram_start__,%A2                  | Buffer
+                    BSR       readSectors                             | Read the sector
+                    BNE       3f                                      | Error?
+
+                    LEA       __free_ram_start__,%A2
+
+                    MOVE.B    0x6c(%A2),%D1                           | surfaces (heads)
+                    EXT.W     %D1
+
+                    MOVE.B    0x6d(%A2),%D0                           | sectors per track 
+                    EXT.W     %D0
+
+                    MULU.W    %D0,%D1                                 | heads * sectors
+
+                    MOVE.B    0x72(%A2),%D0                           | start cylinder
+                    LSL.W     #8,%D0
+                    MOVE.B    0x73(%A2),%D0
+
+                    MULU.W    %D1,%D0                                 | Start of disk = heads * sectors * start cylinder
+                    ADD.L     #2,%D0                                  | The boot loader starts at sector 2
+                    ADD.L     %D7,%D0                                 | Plus parition start
+                    BSR       setLBA
+
+                    MOVE.L    #12,%D0                                 | Read 12 sectors
+                    MOVE.L    #0,%A2                                  | Address 0x
+                    BSR       readSectors                             | Read the blocks
+                    BNE       3f                                      | Error?
+
+                    MOVE.W    #0xC00,0x406                            | Magic number
+
+3:                  RTS
+
+*-----------------------------------------------------------------------------------------------------
+* cpmBootLoader
+*-----------------------------------------------------------------------------------------------------
+cpmBootLoader:      LINK      %FP,#-2                                 | local variable - word driveId
 
                     MOVE.W    currentDrive,%D1                        | Get current drive
                     MOVE.W    %D1,-2(%FP)                             | Local driveId variable
