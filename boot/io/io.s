@@ -47,7 +47,8 @@ ioInit:             MOVE.B    IOBYTE,%D0
 * ----------------------------------------------------------------------------------
 * Set the current IO device, device is specified in %DO.B
 * ----------------------------------------------------------------------------------
-setIODevice:        CMPI.B    #DEV_PROP,%D0
+setIODevice:
+                    CMPI.B    #DEV_PROP,%D0
                     BEQ       1f
 
                     CMPI.B    #DEV_SER_A,%D0
@@ -73,7 +74,8 @@ setIODevice:        CMPI.B    #DEV_PROP,%D0
 * ----------------------------------------------------------------------------------
 * Get a keyboard status in %D0, Z= nothing, 2 = char present
 * ----------------------------------------------------------------------------------
-keystat:            CMPI.B    #DEV_PROP,device
+keystat:
+                    CMPI.B    #DEV_PROP,device
                     BEQ       p_keystat
                     CMPI.B    #DEV_SER_A,device
                     BEQ       a_keystat
@@ -87,7 +89,8 @@ keystat:            CMPI.B    #DEV_PROP,device
 * ----------------------------------------------------------------------------------
 * Output a character from %D1.B
 * ----------------------------------------------------------------------------------
-outch:              CMPI.B    #DEV_PROP,device
+outch:
+                    CMPI.B    #DEV_PROP,device
                     BEQ       p_outch
                     CMPI.B    #DEV_SER_A,device
                     BEQ       a_outch
@@ -100,7 +103,8 @@ outch:              CMPI.B    #DEV_PROP,device
 * ----------------------------------------------------------------------------------
 * Input a character into %D1.B
 * ----------------------------------------------------------------------------------
-inch:               CMPI.B    #DEV_PROP,device
+inch:
+                    CMPI.B    #DEV_PROP,device
                     BEQ       p_inch
                     CMPI.B    #DEV_SER_A,device
                     BEQ       a_inch

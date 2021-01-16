@@ -1,4 +1,3 @@
-          .ifdef              IS_68030
                     .include  "include/serial.i"
                     .include  "include/ascii.i"
                     .include  "include/macros.i"
@@ -352,29 +351,6 @@ serInit:            MOVE.B    (%A0),%D0                               | Read cmd
 *
 * ----------------------------------------------------------------------------------
 initCmds:
-*                    dc.b      0x00,0x00                               | pointer reset
-*                    dc.b      0x09,0xC0                               | hardware reset
-*                    dc.b      0x04,0x44                               | 16x clock, async, 1 stop, no par
-*                    dc.b      0x01,0x00                               | no dma, no interrupts
-*                    dc.b      0x02,0x00                               | clear int vector
-*                    dc.b      0x03,0xC0                               | rx 8 bits, disabled
-*                    dc.b      0x05,0x60                               | tx 8 bits, disabled
-*                    dc.b      0x09,0x01                               | status low, no interrupts
-*                    dc.b      0x0A,0x00                               | nrz encoding
-*                    dc.b      0x0B,0x56                               | Recieve/transmit clock = BRG
-*                    dc.b      0x0C,0x02                               | time constant low byte (38,400)
-*                    dc.b      0x0D,0x00                               | time constant high byte(38,400)
-*                    dc.b      0x0E,0x00                               | BRG source RTxC
-*                    dc.b      0x0E,0x80                               | clock source BRG
-*                    dc.b      0x0E,0x01                               | enable BRG
-*                    dc.b      0x0F,0x00                               | no ints
-*                    dc.b      0x10,0x10                               | reset interrupts
-*                    dc.b      0x01,0x12                               | enable Tx int, enable rx int on all chars
-*                    dc.b      0x09,0x09                               | Master interrupt enable, vector includes status
-*                    dc.b      0x03,0xC1                               | enable Rx
-*                    dc.b      0x05,0x68                               | enable Tx
-*                    dc.b      0x00,0x00                               | overflow
-
                     dc.b      0x09, 0xC0                              | WR9:  hardware reset
                     dc.b      0x04, 0x44                              | WR4:  X16 clock, 1 Stop, NP
                     dc.b      0x0B, 0x56                              | WR11: Receive/transmit clock = BRG
@@ -397,6 +373,4 @@ strRDA:             .asciz    ": RDA="
 strTBE:             .asciz    ", TBE="
 strDCD:             .asciz    ", DCD="
 strCTS:             .asciz    ", CTS="
-
-          .endif
 

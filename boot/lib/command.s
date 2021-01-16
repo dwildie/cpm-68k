@@ -1,6 +1,7 @@
                     .include  "include/macros.i"
                     .include  "include/ide.i"
                     .include  "include/io-device.i"
+                    .include  "include/file-sys.i"
 
 lineBufferLen       =         60
 maxTokens           =         4
@@ -27,8 +28,11 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "a", "a:", driveACmd, "a                   : Select drive A", 0
                     CMD_TABLE_ENTRY "b", "b:", driveBCmd, "b                   : Select drive B", 0
           .ifdef              IS_68030
-                    CMD_TABLE_ENTRY "console", "con", setConsoleCmd, "console <[A|B|P|U]> : Set the console device", 0
+                    CMD_TABLE_ENTRY "cas", "cas", showCacheCmd, "cas                 : Show the cache control register", 0
+                    CMD_TABLE_ENTRY "cai", "cai", enableAddressCacheCmd, "cai                 : Enable the address cache", 0
+                    CMD_TABLE_ENTRY "cdi", "cdi", enableDataCacheCmd, "cdi                 : Enable the data cache", 0
           .endif
+                    CMD_TABLE_ENTRY "console", "con", setConsoleCmd, "console <[A|B|P|U]> : Set the console device", 0
                     CMD_TABLE_ENTRY "cpm", "cpm", bootCpmCmd, "boot <file>         : Load CP/M S-Record <file> into memory and execute", 0
           .ifdef              IS_68030
                     CMD_TABLE_ENTRY "cromix", "cro", bootCromixCmd, "cromix <file>       : Load cromix.sys S-Record <file> into memory and execute", 0
@@ -50,21 +54,17 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "u", "u", memNextCmd, "u                   : Read the next memory block", 0
                     CMD_TABLE_ENTRY "i", "i", memPrevCmd, "i                   : Read the previous memory block", 0
                     CMD_TABLE_ENTRY "part", "p", partitionCmd, "part <partId>       : Select partition <partId>", 0
-          .ifdef              IS_68030
                     CMD_TABLE_ENTRY "pin", "pi", readPortCmd, "pin <port>          : Read from portNo", 0
                     CMD_TABLE_ENTRY "pout", "po", writePortCmd, "pout <port> <byte>  : Write byte to portNo", 0
-          .endif
                     CMD_TABLE_ENTRY "read", "r", readCmd, "read <lba>          : Read and display the drive sector at <lba>", 0
                     CMD_TABLE_ENTRY "readNext", ">", readNextCmd, ">                   : Increment LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                   : Decrement LBA, read and display the drive sector", 0
-          .ifdef              IS_68030
                     CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs                : Display the registers", 0
                     CMD_TABLE_ENTRY "scmd", "sc", serialCmdCmd, "scmd <[A|B]> Reg Val: Send Val to register Reg for port A, B", 0
                     CMD_TABLE_ENTRY "sinit", "si", serialInitCmd, "sinit <[A|B]>       : Initialise serial port A or B", 0
                     CMD_TABLE_ENTRY "sloop", "sl", serialLoopCmd, "sloop <[A|B|U]>     : Loopback serial port A, B or USB", 0
                     CMD_TABLE_ENTRY "sout", "so", serialOutCmd, "sout <[A|B|U]>      : Console out to serial port A, B or USB", 0
                     CMD_TABLE_ENTRY "sstat", "ss", serialStatusCmd, "sstat <[A|B|U]>     : Get the status of serial port A, B or USB", 0
-          .endif
                     CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>          : Set the stack pointer to <addr> and restart", 0
           .ifdef              IS_68030
                     CMD_TABLE_ENTRY "stack", "s", stackCmd, "stack               : Test the stack", 0
@@ -137,11 +137,11 @@ getCmd:             MOVE.L    #0,%D1
                     LEA       cmdTable,%A2
 
 1:                  MOVE.L    cmdEntryName(%A2),%A1                   | Get the address of the commands name
-                    BSR       strcmp                                  | Compare 
+                    BSR       stringcmp                               | Compare 
                     BEQ       3f
 
                     MOVE.L    cmdEntryCmd(%A2),%A1                    | Get the address of the commands cmd
-                    BSR       strcmp                                  | Compare 
+                    BSR       stringcmp                               | Compare 
                     BNE       4f
 
 3:                  MOVE.L    %A2,%A0                                 | Matches, return address of command entry in %A0 
@@ -407,19 +407,62 @@ bootCromixCmd:      CMPI.B    #2,%D0                                  | Needs on
                     BEQ       1f
 
                     BSR       cromixBootLoader
-                    BRA       2f
+                    BRA       10f
 
-1:                  MOVE.L    4(%A0),-(%SP)                           | Argument specifies the SRecord file
+
+1:                  MOVE.W    currentDrive,-(%SP)                     | Get current drive
+                    BSR       getFileSysType
+                    ADD.L     #2,%SP
+
+                    CMPI.W    #FS_FAT,%D0
+                    BEQ       2f
+
+                    CMPI.W    #FS_CROMIX,%D0
+                    BEQ       3f
+
+                    PUTS      strUnsupportedType                      | Unsupported partition
+                    BRA       11f
+
+2:                  MOVE.L    4(%A0),-(%SP)                           | Argument specifies the SRecord file
                     BSR       loadRecordFile                          | Will return start address in %D0
                     ADDQ.L    #4,%SP
+                    BRA       10f
 
-2:                  PUTS      strBootingCromix
+3:                  MOVE.L    #0,-(%SP)                               | Write to offset 0
+                    MOVE.L    4(%A0),-(%SP)                           | Argument specifies the cromix.sys file
+
+                    MOVE.W    currentDrive,-(%SP)                     | driveId
+                    BSR       getPartitionId                          | Get the drive's current partition
+                    ADD       #2,%SP
+
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)
+                    MOVE.W    currentDrive,%D0                        | driveId
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)
+                    BSR       getPartitionStart                       | Get the offset (in sectors) to the start of the partition
+                    ADD       #8,%SP
+
+                    MOVE.L    %D0,-(%SP)                              | partitionStart
+                    MOVE.W    currentDrive,%D0
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)                              | driveId
+
+                    BSR       readCromixFile
+                    ADD       #0x10,%SP
+                    CMP.L     #0,%D0
+                    BNE       10f                                     | file has been loaded, boot it
+
+                    PUTS      strNoFile
+                    BRA       11f
+
+10:                 PUTS      strBootingCromix
 
                     MOVE.L    0x0,%SP                                 | Load the stack pointer
                     MOVE.L    0x04,%A0                                | Get the start address
                     JMP       (%A0)                                   | Start cromix
 
-                    RTS
+11:                 RTS
 
 *---------------------------------------------------------------------------------------------------------
 * Load the arg[1] file into memory and execute
@@ -702,6 +745,30 @@ stackCmd:           MOVE.W    #0x1000,%D6
 
           .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
+* Display the cache register
+*---------------------------------------------------------------------------------------------------------
+showCacheCmd:       PUTS      strCacheRegister
+                    MOVEC     #0x002,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+                    RTS
+
+enableAddressCacheCmd:
+                    MOVEC     #0x002,%D0
+                    OR.L      #0x1,%D0
+                    MOVEC     %D0,#0x002
+                    BRA       showCacheCmd
+
+enableDataCacheCmd:
+                    MOVEC     #0x002,%D0
+                    OR.L      #0x100,%D0
+                    MOVEC     %D0,#0x002
+                    BRA       showCacheCmd
+                    RTS
+          .endif
+
+          .ifdef              IS_68030
+*---------------------------------------------------------------------------------------------------------
 * Initialise a serial port
 *---------------------------------------------------------------------------------------------------------
 setConsoleCmd:      CMPI.B    #2,%D0                                  | Needs two args for this command
@@ -792,7 +859,7 @@ serialStatusCmd:    CMPI.B    #2,%D0                                  | Needs tw
                     PUTS      strSerialStatus
                     PUTCH     #DEV_USB
                     BSR       serStatusUSB
-                    
+
 4:                  BSR       newLine
                     RTS
 
@@ -1132,6 +1199,8 @@ strCurrentWaitParameter: .asciz "\r\nCurrent wait parameter: 0x"
 strNewWaitParameter: .asciz   "\r\nNew wait parameter:     0x"
 strInvalidValue:    .asciz    "\r\nInvalid value\r\n"
 strEqualsHex:       .asciz    " = 0x"
+strBootingCromix:   .asciz    "\r\nBooting cromix ...\r\n"
+strNoFile:          .asciz    "\r\nFile not found\r\n"
 
           .ifdef              IS_68030
 strStackErr1:       .asciz    "Stack error, expected 0x"
@@ -1144,5 +1213,5 @@ strSerialStatus:    .asciz    "\r\nStatus of serial port "
 strSerialLoop:      .asciz    "\r\nLoopback serial port "
 strSerialOut:       .asciz    "\r\nOutput to serial port "
 strUSB:             .asciz    "USB\r\n"
-strBootingCromix:   .asciz    "\r\nBooting cromix ...\r\n"
+strCacheRegister:   .asciz    "\r\nCache register: "
           .endif

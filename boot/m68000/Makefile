@@ -10,6 +10,7 @@ CCFLAGS += -m68000
 #CCFLAGS += -ggdb
 CCFLAGS += -nostdlib
 CCFLAGS += -nodefaultlibs
+CCFLAGS += -I../include
 CCFLAGS += -I../../baselibc/include
 CCFLAGS += -I../../fat/include
 
@@ -18,7 +19,7 @@ LDFLAGS  += -L../../fat/target
 LDFLAGS  += -L../../baselibc/target
 LDFLAGS  += -L/usr/local/lib/gcc/m68k-elf/9.2.0/m68000
 
-LIBS     += -lfat
+#LIBS     += -lfat
 LIBS     += -lc
 LIBS     += -lgcc
  

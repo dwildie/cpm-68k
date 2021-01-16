@@ -124,7 +124,6 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
 
                     BSR       fCloseFAT                               | Close the file
                     BSR       mediaClose                              | Shutdown the fat driver
-
                     BRA       6f                                      | Load
 
                     /* CP/M partition */

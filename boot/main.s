@@ -75,11 +75,11 @@ initDataSegs:       MOVEA.L   #__bss_start__, %A0                     | Zero bss
                     .align(2)
                     .global   strID
           .ifdef              IS_68000
-strID:              .asciz    "S100 68000 Boot Monitor V0.2.1.R5\n\r"
+strID:              .asciz    "S100 68000 Boot Monitor V0.2.1.R6\n\r"
           .endif
 
           .ifdef              IS_68030
-strID:              .asciz    "S100 68030 Boot Monitor V0.2.1.R5\n\r"
+strID:              .asciz    "S100 68030 Boot Monitor V0.2.1.R6\n\r"
           .endif
 
 *---------------------------------------------------------------------------------------------------------
