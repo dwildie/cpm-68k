@@ -1,12 +1,12 @@
 AS       = m68k-elf-as
-ASFLAGS += -m68030
+ASFLAGS += -m68010
 ASFLAGS += -alms
 ASFLAGS += -I../ 
 ASFLAGS += --defsym IS_68030=1
 
 CC       = m68k-elf-gcc
 CCFLAGS += -Wall
-CCFLAGS += -m68030
+CCFLAGS += -m68010
 #CCFLAGS += -ggdb
 CCFLAGS += -nostdlib
 CCFLAGS += -nodefaultlibs

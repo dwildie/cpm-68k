@@ -8,6 +8,7 @@
                     .global   serInitA,serStatusA,serCmdA,serValA,writeChA,readChA,loopA,serOutA
                     .global   serInitB,serStatusB,serCmdB,serValB,writeChB,readChB,loopB,serOutB
                     .global   serStatusUSB,writChUSB,readChUSB,loopUSB,serOutUSB
+                    .global   serReset
 
 * ----------------------------------------------------------------------------------
 * Initialise serial port a
@@ -347,18 +348,21 @@ serInit:            MOVE.B    (%A0),%D0                               | Read cmd
                     RTS
 
 * ----------------------------------------------------------------------------------
-*
-*
+* Hard reset the Z8530
 * ----------------------------------------------------------------------------------
-initCmds:
-                    dc.b      0x09, 0xC0                              | WR9:  hardware reset
-                    dc.b      0x04, 0x44                              | WR4:  X16 clock, 1 Stop, NP
+serReset:           MOVE.B    #0x09,ZSCC_A_CTL                        | WR 9
+                    MOVE.B    #0xC0,ZSCC_A_CTL                        | Hard reset
+                    RTS
+
+* ----------------------------------------------------------------------------------
+* Initialisation commands for each Z8530 channel
+* ----------------------------------------------------------------------------------
+initCmds:           dc.b      0x04, 0x44                              | WR4:  X16 clock, 1 Stop, NP
                     dc.b      0x0B, 0x56                              | WR11: Receive/transmit clock = BRG
                     dc.b      0x0C, 0x02                              | WR12: Low byte 38,400 Baud
                     dc.b      0x0D, 0x00                              | WR13: High byte for Baud
                     dc.b      0x0E, 0x01                              | WR14: Use 4.9152 MHz Clock, enable BRG
                     dc.b      0x01, 0x12                              | WR1:  Enable Tx int, enable Rx int on all chars
-*                    dc.b      0x09, 0x09                              | WR9:  Master int enable, vector includes status
                     dc.b      0x03, 0xC1                              | WR3:  Enable Rx, 8 bits, RTS/CTS/DCD auto enabled 
                     dc.b      0x05, 0xEA                              | WR5:  Enable TX, 8 bits, assert DTR & CTS
 initCmdsEnd:

@@ -65,6 +65,7 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "sloop", "sl", serialLoopCmd, "sloop <[A|B|U]>     : Loopback serial port A, B or USB", 0
                     CMD_TABLE_ENTRY "sout", "so", serialOutCmd, "sout <[A|B|U]>      : Console out to serial port A, B or USB", 0
                     CMD_TABLE_ENTRY "sstat", "ss", serialStatusCmd, "sstat <[A|B|U]>     : Get the status of serial port A, B or USB", 0
+                    CMD_TABLE_ENTRY "sreset", "sr", serialResetCmd, "sreset              : Reset both serial ports", 0
                     CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>          : Set the stack pointer to <addr> and restart", 0
           .ifdef              IS_68030
                     CMD_TABLE_ENTRY "stack", "s", stackCmd, "stack               : Test the stack", 0
@@ -160,7 +161,8 @@ getCmd:             MOVE.L    #0,%D1
 * Display the list of command descriptions
 *---------------------------------------------------------------------------------------------------------
 helpCmd:            BSR       newLine
-                    PUTS      strID                                   | Identification string
+                    PUTS      strId1                                  | Identification string
+                    PUTS      strId2
                     PUTS      strHelpHeader
                     MOVE.B    #0,%D0
                     LEA       cmdTable,%A1
@@ -823,6 +825,12 @@ serialInitCmd:      CMPI.B    #2,%D0                                  | Needs tw
                     BSR       serInitB
 
 3:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Reset both serial ports
+*---------------------------------------------------------------------------------------------------------
+serialResetCmd:     BSR       serReset
+                    RTS
 
 *---------------------------------------------------------------------------------------------------------
 * Display the status of the serial port

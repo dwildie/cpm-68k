@@ -39,7 +39,8 @@ _start:             BSR       initDataSegs                            | initiali
 
                     BSR       ioInit                                  | Initialise the IO subsystem and select the console device
 
-warmBoot:           PUTS      strID                                   | Identification string
+warmBoot:           PUTS      strId1                                  | Identification string
+                    PUTS      strId2
 
                     BSR       initialiseDiskSys                       | Initialise the disk subsystem
                     BSR       initDrives                              | List the available drives
@@ -73,14 +74,15 @@ initDataSegs:       MOVEA.L   #__bss_start__, %A0                     | Zero bss
 *---------------------------------------------------------------------------------------------------------
                     .section  .rodata.strings
                     .align(2)
-                    .global   strID
+                    .global   strId1, strId2
           .ifdef              IS_68000
-strID:              .asciz    "S100 68000 Boot Monitor V0.2.1.R6\n\r"
+strId1:             .asciz    "S100 68000 Boot Monitor V0.3.0.R1\n\r"
           .endif
 
           .ifdef              IS_68030
-strID:              .asciz    "S100 68030 Boot Monitor V0.2.1.R6\n\r"
+strId1:             .asciz    "S100 68030 Boot Monitor V0.3.0.R1\n\r"
           .endif
+strId2:             .asciz    "Damian Wildie, 26/1/2021\r\n\r\n"
 
 *---------------------------------------------------------------------------------------------------------
                     .data
