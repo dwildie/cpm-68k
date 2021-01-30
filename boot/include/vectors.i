@@ -6,5 +6,14 @@ VECTOR_CHK          =         0x18
 VECTOR_TRAPV        =         0x1C
 VECTOR_PRIV_INST    =         0x20
 VECTOR_TRACE        =         0x24
-VECTOR_TRAP         =         0xBC
+
+VECTOR_IRQ_1        =         0x64                                    | Auto vector interrupts
+VECTOR_IRQ_2        =         0x68
+VECTOR_IRQ_3        =         0x6C
+VECTOR_IRQ_4        =         0x70
+VECTOR_IRQ_5        =         0x74
+VECTOR_IRQ_6        =         0x78
+VECTOR_IRQ_7        =         0x7C
+
+VECTOR_TRAP         =         0xBC                                    | TRAP 15
 

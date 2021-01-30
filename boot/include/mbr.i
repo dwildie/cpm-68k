@@ -49,3 +49,5 @@ PID_FAT32           =         0x0C
 PID_CPM80           =         0x52
 PID_CPM86           =         0xD8
 PID_CDOS            =         0xDB
+PID_CROMIX          =         0x5F
+

@@ -21,6 +21,16 @@
                     MOVEM.L   (%SP)+,%D0-%D1
           .endm
 
+          .macro              PUTBS count
+                    MOVEM.L   %D0-%D1,-(%SP)
+                    MOVE.W    \count,%D1
+                    MOVE.B    #BS,%D0
+                    BRA       99f
+98:                 BSR       writeCh
+99:                 DBRA      %D1,98b
+                    MOVEM.L   (%SP)+,%D0-%D1
+          .endm
+
           .macro              PUTCH char
                     MOVE.L    %D0,-(%SP)
                     MOVE.B    \char,%D0
@@ -77,13 +87,16 @@
                     MOVE.L    (%SP)+,%D0
           .endm
 
-          .macro              CMD_TABLE_ENTRY name,address,description
+          .macro              CMD_TABLE_ENTRY name,cmd,address,description,hidden
                     .section  .rodata.strings
 cmd_name_\name:     .asciz    "\name"
+cmd_cmd_\name:      .asciz    "\cmd"
 cmd_desc_\name:     .asciz    "\description"
                     .section  .rodata.cmdTable
                     .global   cmd_\name
 cmd_\name:          .long     cmd_name_\name
+                    .long     cmd_cmd_\name
                     .long     \address
                     .long     cmd_desc_\name
+                    .word     \hidden
           .endm

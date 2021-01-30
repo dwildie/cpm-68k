@@ -3,7 +3,7 @@
 
 *-----------------------------------------------------------------------------------------------------
                     .bss
-                    .global   currentDrive
+                    .global   driveStatus,currentDrive
 
 driveStatus:        .ds.b     2
 currentDrive:       .ds.w     1

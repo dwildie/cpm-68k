@@ -1,8 +1,8 @@
 SUBDIRS := boot bios cpmfs
 
-all: $(SUBDIRS)
+clean all: $(SUBDIRS)
 
 $(SUBDIRS):
-	$(MAKE) -C $@
+	$(MAKE) -C $@ $(MAKECMDGOALS)
 	
-.PHONY: all $(SUBDIRS)
+.PHONY: clean all $(SUBDIRS)

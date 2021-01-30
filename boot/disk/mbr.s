@@ -341,6 +341,11 @@ showType:           CMP.B     #PID_FAT12,%D0
                     PUTS      strCPM86
                     RTS
 
+1:                  CMP.B     #PID_CROMIX,%D0
+                    BNE       1f
+                    PUTS      strCROMIX
+                    RTS
+
 1:                  CMP.B     #PID_CDOS,%D0
                     BNE       1f
                     PUTS      strCDOS
@@ -370,8 +375,9 @@ strFAT12:           .asciz    "FAT12"
 strFAT16:           .asciz    "FAT16"
 strFAT16B:          .asciz    "FAT16B"
 strFAT32:           .asciz    "FAT32"
-strCPM80:           .asciz    "CP/M-80"
-strCPM86:           .asciz    "CP/M-86"
+strCPM80:           .asciz    "CP/M"
+strCPM86:           .asciz    "CP/M"
 strCDOS:            .asciz    "CDOS"
+strCROMIX:          .asciz    "Cromix"
 
 

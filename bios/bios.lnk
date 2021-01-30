@@ -29,8 +29,8 @@ SECTIONS
   
   . += 1;
   . = ALIGN (0x100);
-  __memory_region_start__ = .;
-  __memory_region_end__ = 0x00FCFFFF;
+  __memory_region_start__  = 0x00100000;
+  __memory_region_end__    = 0x00FAFFFF;
   __memory_region_length__ = 1 + (__memory_region_end__ - __memory_region_start__);
   
   /DISCARD/ : {

@@ -2,9 +2,7 @@
 
                     .text
 
-                    .global   biosHandler
-                    .global   readSector                              | ***** Debug
-                    .global   g                             | ***** Debug
+                    .global   biosHandler,consoleStatus
 
 *-----------------------------------------------------------------------------------------------------
 * Trap 15 - Handle calls from the bios

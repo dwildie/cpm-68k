@@ -62,7 +62,6 @@ fOpen:              LINK      %FP,#0
                     MOVE.L    0x08(%FP),-(%SP)                        | Param: fileName
                     BSR       fOpenFAT                                | Open the file
                     ADD.L     #4,%SP
-
                     BRA       4f
 
                     /* CP/M Partition */
@@ -183,6 +182,9 @@ listDirectory:      LINK      %FP,#-2                                 | local va
                     CMPI.W    #FS_CPM,%D0
                     BEQ       2f
 
+                    CMPI.W    #FS_CROMIX,%D0
+                    BEQ       5f
+
                     CMPI.W    #FS_NONE,%D0
                     BEQ       3f
 
@@ -206,7 +208,6 @@ listDirectory:      LINK      %FP,#-2                                 | local va
                     ADD.L     #4,%SP
 
                     BSR       mediaClose                              | Close the FAT32 library
-
                     BRA       4f
 
                     /* CP/M Partition */
@@ -224,6 +225,26 @@ listDirectory:      LINK      %FP,#-2                                 | local va
                     MOVE.L    %D0,-(%SP)
                     BSR       listCpmDirectory
                     ADD       #4,%SP
+                    BRA       4f
+
+                    /* Cromix Partition */
+5:                  MOVE.W    -2(%FP),-(%SP)                          | driveId
+                    BSR       getPartitionId                          | Get the drive's current partition
+                    ADD       #2,%SP
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)
+                    MOVE.W    -2(%FP),%D0                             | driveId
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)
+                    BSR       getPartitionStart                       | Get the offset (in sectors) to the start of the partition
+                    ADD       #8,%SP
+
+                    MOVE.L    %D0,-(%SP)                              | partitionStart
+                    MOVE.W    -2(%FP),%D0                             | driveId
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)
+                    BSR       listCromixDirectory
+                    ADD       #8,%SP
                     BRA       4f
 
                     /* No partition */
@@ -273,6 +294,9 @@ getFileSysType:     LINK      %FP,#-2
                     CMPI      #PID_CDOS,%D0
                     BEQ       3f
 
+                    CMPI      #PID_CROMIX,%D0                         | Check for Cromix partition type
+                    BEQ       5f
+
                     MOVE.W    #FS_OTHER,%D0
                     BRA       4f
 
@@ -283,6 +307,9 @@ getFileSysType:     LINK      %FP,#-2
                     BRA       4f
 
 3:                  MOVE.W    #FS_CPM,%D0
+                    BRA       4f
+
+5:                  MOVE.W    #FS_CROMIX,%D0
 
 4:                  UNLK      %FP
                     RTS
@@ -290,8 +317,8 @@ getFileSysType:     LINK      %FP,#-2
 *---------------------------------------------------------------------------------------------------------
                     .section  .rodata.strings
                     .global   strUnsupportedType
-                    
+
                     .align(2)
 strRootDir:         .asciz    "/"
-strUnsupportedType: .asciz    "\r\nUnsupported partition type\rn\n"
+strUnsupportedType: .asciz    "\r\nUnsupported partition type\r\n"
 
