@@ -1,4 +1,4 @@
-SUBDIRS := boot bios cpmfs
+SUBDIRS := baselibc fat boot bios cpmfs
 
 clean all: $(SUBDIRS)
 
