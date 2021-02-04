@@ -79,3 +79,10 @@ $(CPM_SOURCE)/$(CPM_ZIP): | $(CPM_SOURCE)
 	rm -rf $(CPM_SOURCE)/*
 	wget -O $(CPM_SOURCE)/$(CPM_ZIP) http://cpm.z80.de/download/$(CPM_ZIP) 
 	touch $(CPM_SOURCE)/$(CPM_ZIP)
+
+$(CPM_SOURCE):
+	mkdir -p $@
+	
+$(DIR_TARGET):
+	mkdir -p $@
+	
