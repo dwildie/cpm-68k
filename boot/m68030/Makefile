@@ -85,7 +85,7 @@ obj/main.o: ../main.s | obj
 obj/boot30.srec: obj/main.o $(OBS)
 	$(LD) $(LDFLAGS) -T boot.lnk obj/main.o $(OBS) $(LIBS) -Map $(@:.srec=.map) -o $@
 
-target/boot30.srec: obj/boot30.srec
+target/boot30.srec: obj/boot30.srec | target
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 Boot Loader" -o $@
 	srec_info $@
 
