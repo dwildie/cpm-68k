@@ -46,9 +46,8 @@ all: target/libc.a
 
 clean:
 	$(RM) -rf obj target
-	mkdir -p obj target
 
-target/libc.a: $(OBJS)
+target/libc.a: $(OBJS) | target
 	$(RM) $@
 	$(AR) ru $@ $^
 
@@ -58,5 +57,12 @@ run_tests: $(TESTS_OBJS)
 tests/%: tests/%.c tests/tests_glue.c libc.a
 	$(CC) $(CFLAGS) -o $@ $^
 
-obj/%.o: src/%.c
+obj/%.o: src/%.c | obj
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+obj:
+	mkdir -p $@
+
+target:
+	mkdir -p $@
+
