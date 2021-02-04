@@ -48,35 +48,38 @@ SREC_AS_OBJ = $(patsubst ../s-record/%.s, obj/s-record/%.o, $(SREC_AS_SRC))
 
 OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(IO_AS_OBJ) $(IO_C_OBJ) $(DSK_AS_OBJ) $(DSK_C_OBJ) $(SREC_AS_OBJ) 
 
+# --------------------------------------------------------------------------------
+# Dependencies
+# --------------------------------------------------------------------------------
 all: target/boot30.srec
 
-obj/bios/%.o:	../bios/%.s
+obj/bios/%.o:	../bios/%.s | obj/bios
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
-obj/disk/%.o:	../disk/%.s
+obj/disk/%.o:	../disk/%.s | obj/disk
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 	
-obj/disk/%.o:	../disk/%.c
+obj/disk/%.o:	../disk/%.c | obj/disk
 	$(CC) $(CCFLAGS) -S -o $(@:.o=.s) $<
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
-obj/io/%.o:	../io/%.s
+obj/io/%.o:	../io/%.s | obj/io
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 	
-obj/io/%.o:	../io/%.c
+obj/io/%.o:	../io/%.c | obj/io
 	$(CC) $(CCFLAGS) -S -o $(@:.o=.s) $<
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
-obj/lib/%.o:	../lib/%.s
+obj/lib/%.o:	../lib/%.s | obj/lib
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
-obj/s-record/%.o:	../s-record/%.s
+obj/s-record/%.o:	../s-record/%.s | obj/s-record
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
 # --------------------------------------------------------------------------------
 # M68030 CPM Boot Loader
 # --------------------------------------------------------------------------------
-obj/main.o: ../main.s
+obj/main.o: ../main.s | obj
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
 obj/boot30.srec: obj/main.o $(OBS)
@@ -88,6 +91,26 @@ target/boot30.srec: obj/boot30.srec
 
 clean:
 	rm -rf obj/* target/*
-	mkdir -p obj/io obj/disk obj/commmands obj/lib obj/s-record obj/bios target
+
+obj:
+	mkdir -p $@
+
+obj/io: obj
+	mkdir -p $@
+
+obj/disk: obj
+	mkdir -p $@
+
+obj/lib: obj
+	mkdir -p $@
+
+obj/s-record: obj
+	mkdir -p $@
+
+obj/bios: obj
+	mkdir -p $@
+
+target:
+	mkdir -p $@
 
 
