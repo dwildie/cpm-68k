@@ -21,19 +21,19 @@ all: target/bios.srec obj/ldr.srec target/ldbios.s target/bios.s target/buffer.s
 # --------------------------------------------------------------------------------
 # M68K CPM Bios
 # --------------------------------------------------------------------------------
-obj/%.o: %.s
+obj/%.o: %.s | obj
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
-obj/bios.srec: obj/bios.o obj/buffer.o
+obj/bios.srec: obj/bios.o obj/buffer.o | obj
 	$(LD) -T bios.lnk obj/bios.o obj/buffer.o -Map $(@:.srec=.map) -o $@
 
-obj/ldr.srec: obj/ldbios.o
+obj/ldr.srec: obj/ldbios.o | obj
 
-target/bios.srec: obj/bios.srec
+target/bios.srec: obj/bios.srec | target
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K S100 V0.1.1.R3 BIOS" -o $@
 	srec_info $@
 
-target/%.s: %.s
+target/%.s: %.s | target
 	cat cpm_defs.s $< | sed -e 's/\.include\s*"\(.*\)"/include(`\1'"'"')/' \
 	       | m4 \
 	       | sed -e 's/^\*.*//' -e 's/^\(.*\)=\s*\(.*\)/\1 equ \2/' -e 's/.global/globl/' \
@@ -44,6 +44,10 @@ target/%.s: %.s
 
 clean:
 	rm -rf obj/* target/*
-	mkdir -p obj target
 
+obj:
+	mkdir -p $@
+
+target:
+	mkdir -p $@
 
