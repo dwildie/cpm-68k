@@ -51,11 +51,11 @@ warmBoot:           PUTS      strID                                   | Identifi
                     .align(2)
                     .global   strID
           .ifdef              IS_68000
-strID:              .asciz    "S100 68000 Boot Monitor V0.2.1.R4\n\r"
+strID:              .asciz    "S100 68000 Boot Monitor V0.2.1.R5\n\r"
           .endif
 
           .ifdef              IS_68030
-strID:              .asciz    "S100 68030 Boot Monitor V0.2.1.R4\n\r"
+strID:              .asciz    "S100 68030 Boot Monitor V0.2.1.R5\n\r"
           .endif
 
 *---------------------------------------------------------------------------------------------------------

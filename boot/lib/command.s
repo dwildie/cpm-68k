@@ -80,6 +80,8 @@ cmdEntryHidden      =         0x10                                    | Offset t
 *---------------------------------------------------------------------------------------------------------
 cmdLoop:            BSR       newLine
                     BSR       writeDrive
+                    PUTCH     #':'
+                    BSR       writePartition
                     PUTS      strPrompt
 
                     MOVE.B    #lineBufferLen,%D0                      | Get a command line
@@ -758,7 +760,7 @@ invalidArg:         PUTS      strInvalidArgs
                     .section  .rodata.strings
                     .align(2)
 
-strPrompt:          .asciz    ":> "
+strPrompt:          .asciz    "$ "
 strUnknownCommand:  .asciz    "\r\nunknown command"
 strHelpHeader:      .asciz    "Available commands:\r\n"
 strWrongArgs:       .asciz    "\r\nWrong arguments\r\n"
