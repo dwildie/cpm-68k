@@ -20,6 +20,7 @@ currentDrive:       .ds.w     1
                     .global   showDriveModel
                     .global   showDriveIdent
                     .global   writeDrive
+                    .global   writePartition
 
 *-----------------------------------------------------------------------------------------------------
 * Initialise  the disk system
@@ -212,6 +213,16 @@ showDriveIdent:     PEA       __free_ram_start__
 *-----------------------------------------------------------------------------------------------------
 writeDrive:         MOVE.B    #'A',%D0
                     ADD.W     currentDrive,%D0
+                    BSR       writeCh
+                    RTS
+
+*-----------------------------------------------------------------------------------------------------
+* Write the partition number
+*-----------------------------------------------------------------------------------------------------
+writePartition:     MOVE.W    currentDrive,-(%SP)                     | driveId
+                    BSR       getPartitionId                          | Get the drive's current partition
+                    ADD       #2,%SP
+                    ADD       #'0',%D0
                     BSR       writeCh
                     RTS
 
