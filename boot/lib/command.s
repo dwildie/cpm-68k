@@ -33,9 +33,9 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "cdi", "cdi", enableDataCacheCmd, "cdi                 : Enable the data cache", 0
           .endif
                     CMD_TABLE_ENTRY "console", "con", setConsoleCmd, "console <[A|B|P|U]> : Set the console device", 0
-                    CMD_TABLE_ENTRY "cpm", "cpm", bootCpmCmd, "boot <file>         : Load CP/M S-Record <file> into memory and execute", 0
+                    CMD_TABLE_ENTRY "boot", "b", bootCpmCmd, "boot <file>         : Load CP/M S-Record <file> into memory and execute", 0
           .ifdef              IS_68030
-                    CMD_TABLE_ENTRY "cromix", "cro", bootCromixCmd, "cromix <file>       : Load cromix.sys S-Record <file> into memory and execute", 0
+                    CMD_TABLE_ENTRY "cromix", "cmx", bootCromixCmd, "cromix <file>       : Load cromix.sys S-Record <file> into memory and execute", 0
           .endif
                     CMD_TABLE_ENTRY "dir", "ls", directoryCmd, "dir                 : Display directory of current drive", 0
                     CMD_TABLE_ENTRY "def", "def", diskDefCmd, "def                 : Display the CPM disk definition", 0
