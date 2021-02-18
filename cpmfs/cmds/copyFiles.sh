@@ -18,7 +18,7 @@ n=2
 while [ $n -lt $# ]
 do
   echo "Copying ${args[$n]} to $IMAGE, definition $DEF"
-  cpmcp -f ${DEF} $IMAGE ${args[$n]} 0:
+  cpmcp -t -f ${DEF} $IMAGE ${args[$n]} 0:
   
   n=$(( $n + 1))
 done

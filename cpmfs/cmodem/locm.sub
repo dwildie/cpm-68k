@@ -1,0 +1,2 @@
+; CModem for CP/M-68K - create CMODEM.REL executable
+a:lo68 -r -o cmodem.rel a:s.o cmodem.o cmodem2.o a:clib a:clib a:libf.a
