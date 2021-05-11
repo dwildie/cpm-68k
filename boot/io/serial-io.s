@@ -2,11 +2,13 @@
                     .include  "include/ascii.i"
 
 * ----------------------------------------------------------------------------------
+* Primitive I/O routines for the 2 SIO + USB Board.
+* ----------------------------------------------------------------------------------
                     .text
 
                     .global   a_keystat,a_outch,a_inch
                     .global   b_keystat,b_outch,b_inch
-                    .global   u_keystat,u_outch,u_inch
+                    .global   u_keystat,u_outch,u_inch,u_detect
 
 * ----------------------------------------------------------------------------------
 * Get a serial port a input status in %D0, Z= nothing, 2 = char present
@@ -84,3 +86,28 @@ u_inch:             MOVE.B    USB_STATUS,%D1                          | Check RD
                     MOVE.B    USB_DATA,%D0                            | Read char from data port
                     RTS                                               | Return from subroutine, input char is in %D0
 
+* ----------------------------------------------------------------------------------
+* Determine if usb port present, Z set = not present
+* ----------------------------------------------------------------------------------
+u_detect:           MOVE.B    USB_STATUS,%D0                          | Check TBE bit, must be zero
+                    AND.B     #USB_TBE,%D0
+                    BNE       3f                                      | Not zero, USB cannot be present
+
+                    MOVE.B    #'*',USB_DATA                           | Output a char
+
+                    MOVE.W    #0x100,%D1                              | Read input characters until empty, max 0x100 attempts
+1:                  MOVE.B    USB_DATA,%D0                            | Read char
+                    MOVE.B    USB_STATUS,%D0                          | Check for no more characters
+                    AND.B     #USB_RDA,%D0
+                    BNE       2f
+
+                    SUB.W     #1,%D1                                  | Decrement loop counter
+                    BNE       1b
+                    BRA       3f
+
+2:                  MOVE.B    #'#',USB_DATA                           | Output a char
+                    OR.B      #1,%D0
+                    BRA       4f
+
+3:                  EOR.B     %D0,%D0
+4:                  RTS

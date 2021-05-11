@@ -2,11 +2,10 @@ OUTPUT_FORMAT(srec)
 
 MEMORY
 {
-    rom  : ORIGIN = 0xFD0000, LENGTH = 0x8000
-    ram  : ORIGIN = 0xFD8000, LENGTH = 0x8000
-    ports : ORIGIN = 0xFFFF0000, LENGTH = 0x0
-    prop : ORIGIN = 0xFF0000, LENGTH = 0x2
-    ide  : ORIGIN = 0xFF0030, LENGTH = 0x5
+    rom   : ORIGIN = 0xFD0000, LENGTH = 0x8000
+    ram   : ORIGIN = 0xFD8000, LENGTH = 0x8000
+    ports : ORIGIN = 0xFF0000, LENGTH = 0xFFFF
+    ide   : ORIGIN = 0xFF0030, LENGTH = 0x5
 }
 
 SECTIONS
@@ -18,8 +17,6 @@ SECTIONS
   __ram_end__ = ORIGIN(ram) + LENGTH(ram) - 1;
   __ports_start__ = ORIGIN(ports);
   
-  
-  .ports.prop : { } > prop
   .ports.ide : { } > ide
   .text : { *(.text*) } > rom
   .rodata : { *(.rodata*) } > rom

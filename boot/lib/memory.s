@@ -6,7 +6,8 @@
                     .global   memCmp
                     .global   memClr
                     .global   memByteTest
-                    .global   memDWordTest
+                    .global   memDWordTest,tstd1
+                    .global   memDWordFast,tstf1
 
 *-----------------------------------------------------------------------------------------------------
 * Compare two memory regions %A0 & %A1 of length %D0 bytes. %D0 will return 0 if identical, otherwise, 1
@@ -46,7 +47,7 @@ memClr:             LINK      %FP,#0
                     UNLK      %FP
                     RTS
 
-*-------------------------------------------------------------------------
+*-----------------------------------------------------------------------------------------------------
 * Display %D0 bytes in RAM starting at %A0, %A1 is the displayed address
 *-----------------------------------------------------------------------------------------------------
 memDump:            MOVEM.L   %D1-%D4/%A0-%A1,-(%SP)
@@ -296,7 +297,7 @@ memByteTest:        MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
                     MOVEM.L   (%SP)+,%D1-%D5/%A0-%A3
                     RTS
 
-*-------------------------------------------------------------------------
+*-----------------------------------------------------------------------------------------------------
 * Test %D0 DWords of RAM starting at %A0
 *-----------------------------------------------------------------------------------------------------
 memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
@@ -306,11 +307,14 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
 
 1:                  BSR       newLine                                 | New line 
 
-                    MOVE.L    #0x0,%D0
+                    MOVE.L    #0x0,%D0                                | Display start of 0x00000000
                     BSR       writeHexLong
                     PUTCH     #' '
                     MOVE.L    %A0,%D0
                     BSR       writeHexLong
+
+                    TST.L     %D5                                     | Skip zero filling for subsequent iterations
+                    BNE       7f
 
                     MOVE.L    #0,%D3                                  | Fill test space with zeros
                     MOVE.L    %A0,%A3
@@ -328,7 +332,7 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
                     CMP.L     %D2,%D3
                     BNE       2b
 
-                    PUTBS     #17
+7:                  PUTBS     #17                                     | Display start of 0x55555555
                     MOVE.L    #0x55555555,%D0
                     BSR       writeHexLong
                     PUTCH     #' '
@@ -367,7 +371,7 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
                     CMP.L     %D2,%D3
                     BNE       4b
 
-                    PUTBS     #17
+                    PUTBS     #17                                     | Display start of 0xaaaaaaaa
                     MOVE.L    #0xaaaaaaaa,%D0
                     BSR       writeHexLong
                     PUTCH     #' '
@@ -406,7 +410,7 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
                     CMP.L     %D2,%D3
                     BNE       4b
 
-                    PUTBS     #17
+                    PUTBS     #17                                     | Display start of 0xffffffff
                     MOVE.L    #0xffffffff,%D0
                     BSR       writeHexLong
                     PUTCH     #' '
@@ -445,9 +449,16 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
                     CMP.L     %D2,%D3
                     BNE       4b
 
-                    MOVE.L    #0,%D3                                  | Test for 0xff
+                    PUTBS     #17                                     | Display start of 0x00000000
+                    MOVE.L    #0x0,%D0
+                    BSR       writeHexLong
+                    PUTCH     #' '
+                    MOVE.L    %A0,%D0
+                    BSR       writeHexLong
+
+tstd1:              MOVE.L    #0,%D3                                  | Test for 0xff
                     MOVE.L    %A0,%A3
-4:                  MOVE.L    (%A3)+,%D1
+4:                  MOVE.L    (%A3),%D1
                     CMPI.L    #0xffffffff,%D1
                     BEQ       5f
 
@@ -455,7 +466,7 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
                     MOVE.L    %A3,%D0
                     BSR       writeHexLong
                     PUTS      strExpected
-                    MOVE.L    #0xffffff,%D0
+                    MOVE.L    #0xffffffff,%D0
                     BSR       writeHexLong
                     PUTS      strRead
                     MOVE.L    %D1,%D0
@@ -463,8 +474,7 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
                     BSR       newLine
                     ADDI.L    #1,%D4                                  | Increment error count
 
-5:                  ADDI.L    #1,%D3
-
+5:                  MOVE.L    #0x00000000,(%A3)+
                     MOVE.L    %A3,%D0
                     AND.L     #0xFFFC,%D0
                     TST.L     %D0
@@ -473,7 +483,8 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
                     MOVE.L    %A3,%D0
                     BSR       writeHexLong
 
-6:                  CMP.L     %D2,%D3
+6:                  ADDI.L    #1,%D3
+                    CMP.L     %D2,%D3
                     BNE       4b
 
                     ADDI.L    #1,%D5                                  | Increment iteration count
@@ -491,6 +502,109 @@ memDWordTest:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
 
                     MOVEM.L   (%SP)+,%D1-%D5/%A0-%A3
                     RTS
+
+*-----------------------------------------------------------------------------------------------------
+* Fast Test %D0 DWords of RAM starting at %A0
+*-----------------------------------------------------------------------------------------------------
+memDWordFast:       MOVEM.L   %D1-%D5/%A0-%A3,-(%SP)
+                    MOVE.L    %D0,%D2                                 | Total byte count
+                    MOVE.L    #0,%D4                                  | Error count
+                    MOVE.L    #0,%D5                                  | Iteration count
+
+1:                  BSR       newLine                                 | New line 
+
+                    MOVE.L    #0x0,%D0                                | Display start of 0x00000000
+                    BSR       writeHexLong
+                    PUTCH     #' '
+                    MOVE.L    %A0,%D0
+                    BSR       writeHexLong
+
+                    TST.L     %D5                                     | Skip zero filling for subsequent iterations
+                    BNE       7f
+
+                    MOVE.L    #0,%D3                                  | Fill test space with zeros
+                    MOVE.L    %A0,%A3
+2:                  MOVE.L    #0x0,(%A3)+
+                    ADDI.L    #1,%D3
+                    CMP.L     %D2,%D3
+                    BNE       2b
+
+7:                  PUTBS     #17                                     | Display start of 0xffffffff
+                    MOVE.L    #0xffffffff,%D0
+                    BSR       writeHexLong
+                    PUTCH     #' '
+                    MOVE.L    %A0,%D0
+                    BSR       writeHexLong
+
+                    MOVE.L    #0,%D3                                  | Test for 0x00 and write 0xff
+                    MOVE.L    %A0,%A3
+4:                  MOVE.L    (%A3),%D1
+                    CMPI.L    #0x0,%D1
+                    BEQ       5f
+
+                    BSR       newLine                                 | Display error
+                    MOVE.L    %A3,%D0
+                    BSR       writeHexLong
+                    PUTS      strExpected
+                    MOVE.L    #0xaaaaaaaa,%D0
+                    BSR       writeHexLong
+                    PUTS      strRead
+                    MOVE.L    %D1,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+                    ADDI.L    #1,%D4                                  | Increment error count
+
+5:                  MOVE.L    #0xffffffff,(%A3)+
+                    ADDI.L    #1,%D3
+                    CMP.L     %D2,%D3
+                    BNE       4b
+
+                    PUTBS     #17                                     | Display start of 0x00000000
+                    MOVE.L    #0x0,%D0
+                    BSR       writeHexLong
+                    PUTCH     #' '
+                    MOVE.L    %A0,%D0
+                    BSR       writeHexLong
+
+tstf1:              MOVE.L    #0,%D3                                  | Test for 0xff
+                    MOVE.L    %A0,%A3
+4:                  MOVE.L    (%A3),%D1
+                    CMPI.L    #0xffffffff,%D1
+                    BEQ       5f
+
+                    BSR       newLine                                 | Display error
+                    MOVE.L    %A3,%D0
+                    BSR       writeHexLong
+                    PUTS      strExpected
+                    MOVE.L    #0xffffffff,%D0
+                    BSR       writeHexLong
+                    PUTS      strRead
+                    MOVE.L    %D1,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+                    ADDI.L    #1,%D4                                  | Increment error count
+
+5:                  MOVE.L    #0x00000000,(%A3)+
+                    ADDI.L    #1,%D3
+                    CMP.L     %D2,%D3
+                    BNE       4b
+
+                    ADDI.L    #1,%D5                                  | Increment iteration count
+
+                    PUTCH     #CR                                     | Display status
+                    MOVE.L    %D5,%D0
+                    BSR       writeDecimalWord
+                    PUTS      strIterations
+                    MOVE.L    %D4,%D0
+                    BSR       writeDecimalWord
+                    PUTS      strErrors
+
+                    BSR       keystat                                 | If not key press, repeat
+                    BEQ       1b
+
+                    MOVEM.L   (%SP)+,%D1-%D5/%A0-%A3
+                    RTS
+
           .endif
 
 *---------------------------------------------------------------------------------------------------------

@@ -79,13 +79,13 @@ initDataSegs:       MOVEA.L   #__bss_start__, %A0                     | Zero bss
                     .align(2)
                     .global   strId1, strId2
           .ifdef              IS_68000
-strId1:             .asciz    "S100 68000 Boot Monitor V0.3.0.R1\n\r"
+strId1:             .asciz    "\n\rS100 68000 Boot Monitor V0.3.0.R5\n\r"
           .endif
 
           .ifdef              IS_68030
-strId1:             .asciz    "S100 68030 Boot Monitor V0.3.0.R1\n\r"
+strId1:             .asciz    "\n\rS100 68030 Boot Monitor V0.3.0.R5\n\r"
           .endif
-strId2:             .asciz    "Damian Wildie, 26/1/2021\r\n\r\n"
+strId2:             .asciz    "Damian Wildie, 01/05/2021\r\n\r\n"
 
 *---------------------------------------------------------------------------------------------------------
                     .data

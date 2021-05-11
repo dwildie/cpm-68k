@@ -35,47 +35,53 @@ ioInit:             MOVE.B    IOBYTE,%D0
                     MOVE.B    #DEV_SER_A,%D0                          | Use serial port a
                     BRA       setIODevice
 
-2:                  CMPI.B    #IO_SER_B,%D0
+2:                  CMPI.B    #IO_PROP,%D0
                     BNE       3f
 
-                    MOVE.B    #DEV_SER_B,%D0                          | Use serial port b
+                    MOVE.B    #DEV_PROP,%D0                           | Use propeller board
                     BRA       setIODevice
 
-3:                  MOVE.B    #DEV_PROP,%D0                           | Default is propeller console
+3:                  JSR       u_detect                                | Detect if the USB device is present, otherwise default to propeller
+                    BEQ       4f
+
+                    MOVE.B    #DEV_USB,%D0                            | Use the USB port
+                    BRA       setIODevice
+
+4:                  MOVE.B    #DEV_PROP,%D0                           | Use the propellor board
                     BRA       setIODevice
 
 * ----------------------------------------------------------------------------------
 * Set the current IO device, device is specified in %DO.B
 * ----------------------------------------------------------------------------------
-setIODevice:
-                    CMPI.B    #DEV_PROP,%D0
-                    BEQ       1f
+setIODevice:        CMPI.B    #DEV_PROP,%D0                           | Propeller or other console
+                    BNE       1f
+                    BSR       p_init
+                    BRA       4f
 
-                    CMPI.B    #DEV_SER_A,%D0
+1:                  CMPI.B    #DEV_SER_A,%D0                          | Serial Port A
                     BNE       2f
                     BSR       serInitA
-                    BRA       1f
+                    BRA       4f
 
-2:                  CMPI.B    #DEV_SER_B,%D0
+2:                  CMPI.B    #DEV_SER_B,%D0                          | Serial Port B
                     BNE       3f
                     BSR       serInitB
-                    BRA       1f
+                    BRA       4f
 
-3:                  CMPI.B    #DEV_USB,%D0
-                    BEQ       1f
+3:                  CMPI.B    #DEV_USB,%D0                            | USB Port
+                    BEQ       4f
 
                     PUTS      strUnknownDevice
                     PUTCH     %D0
                     BSR       newLine
 
-1:                  MOVE.B    %D0,device
+4:                  MOVE.B    %D0,device
                     RTS
 
 * ----------------------------------------------------------------------------------
 * Get a keyboard status in %D0, Z= nothing, 2 = char present
 * ----------------------------------------------------------------------------------
-keystat:
-                    CMPI.B    #DEV_PROP,device
+keystat:            CMPI.B    #DEV_PROP,device
                     BEQ       p_keystat
                     CMPI.B    #DEV_SER_A,device
                     BEQ       a_keystat
@@ -89,8 +95,7 @@ keystat:
 * ----------------------------------------------------------------------------------
 * Output a character from %D1.B
 * ----------------------------------------------------------------------------------
-outch:
-                    CMPI.B    #DEV_PROP,device
+outch:              CMPI.B    #DEV_PROP,device
                     BEQ       p_outch
                     CMPI.B    #DEV_SER_A,device
                     BEQ       a_outch
@@ -103,8 +108,7 @@ outch:
 * ----------------------------------------------------------------------------------
 * Input a character into %D1.B
 * ----------------------------------------------------------------------------------
-inch:
-                    CMPI.B    #DEV_PROP,device
+inch:               CMPI.B    #DEV_PROP,device
                     BEQ       p_inch
                     CMPI.B    #DEV_SER_A,device
                     BEQ       a_inch

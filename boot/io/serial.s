@@ -5,9 +5,9 @@
 * ----------------------------------------------------------------------------------
                     .text
 
-                    .global   serInitA,serStatusA,serCmdA,serValA,writeChA,readChA,loopA,serOutA
-                    .global   serInitB,serStatusB,serCmdB,serValB,writeChB,readChB,loopB,serOutB
-                    .global   serStatusUSB,writChUSB,readChUSB,loopUSB,serOutUSB
+                    .global   serInitA,serStatusA,serCmdA,serValA,writeChA,readChA,loopA,serOutA,serInA
+                    .global   serInitB,serStatusB,serCmdB,serValB,writeChB,readChB,loopB,serOutB,serInB
+                    .global   serStatusUSB,writChUSB,readChUSB,loopUSB,serOutUSB,serInUSB
                     .global   serReset
 
 * ----------------------------------------------------------------------------------
@@ -60,6 +60,16 @@ loopA:              MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D
                     MOVE.L    #ZSCC_A_CTL,%A0
                     MOVE.L    #ZSCC_A_DATA,%A1
                     BSR       loopBack
+                    MOVEM.L   (%SP)+,%D1/%A0-%A1                      | < Restore D1
+                    RTS
+
+* ----------------------------------------------------------------------------------
+* Input from serial port a
+* ----------------------------------------------------------------------------------
+serInA:             MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D1
+                    MOVE.L    #ZSCC_A_CTL,%A0
+                    MOVE.L    #ZSCC_A_DATA,%A1
+                    BSR       serIn
                     MOVEM.L   (%SP)+,%D1/%A0-%A1                      | < Restore D1
                     RTS
 
@@ -127,6 +137,16 @@ loopB:              MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D
                     RTS
 
 * ----------------------------------------------------------------------------------
+* Input from serial port b
+* ----------------------------------------------------------------------------------
+serInB:             MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D1
+                    MOVE.L    #ZSCC_B_CTL,%A0
+                    MOVE.L    #ZSCC_B_DATA,%A1
+                    BSR       serIn
+                    MOVEM.L   (%SP)+,%D1/%A0-%A1                      | < Restore D1
+                    RTS
+
+* ----------------------------------------------------------------------------------
 * Output to serial port b
 * ----------------------------------------------------------------------------------
 serOutB:            MOVEM.L   %D1/%A0-%A1,-(%SP)                      | > Save D1
@@ -176,14 +196,22 @@ readChUSB:          MOVEM.L   %D1,-(%SP)                              | > Save D
 * ----------------------------------------------------------------------------------
 * Loopback serial port usb
 * ----------------------------------------------------------------------------------
-loopUSB:            BSR       readChUSB                               | Wait for and read a character
-                    CMPI      #ESC,%D0                                | If it is an Escape char, exit
+loopUSB:            BSR       keystat                                 | Check for a console keystroke
+                    BEQ       1f                                      | No, check USB
+                    BSR       inch                                    | Yes, read console char
+                    CMPI.B    #ESC,%D0                                | If it is an Escape char, exit
+                    BEQ       2f
+
+1:                  BSR       u_keystat                               | Check for a USB keystroke
+                    BEQ       loopUSB                                 | No, start again
+                    BSR       readChUSB                               | Yes, read USB char
+                    CMPI.B    #ESC,%D0                                | If it is an Escape char, exit
                     BEQ       2f
 
                     BSR       writeChUSB                              | Echo it back to the usb port
                     BSR       writeCh                                 | Display it on the console
 
-                    CMPI      #CR,%D0
+                    CMPI.B    #CR,%D0
                     BNE       loopUSB
 
                     MOVE.B    #LF,%D0                                 | Output a line feed char for every carriage return
@@ -195,17 +223,43 @@ loopUSB:            BSR       readChUSB                               | Wait for
                     RTS
 
 * ----------------------------------------------------------------------------------
+* Input from serial port usb
+* ----------------------------------------------------------------------------------
+serInUSB:           BSR       keystat                                 | Check for a console keystroke
+                    BEQ       1f                                      | No, check USB
+                    BSR       inch                                    | Yes, read console char
+                    CMPI.B    #ESC,%D0                                | If it is an Escape char, exit
+                    BEQ       2f
+
+1:                  BSR       u_keystat                               | Check for a USB keystroke
+                    BEQ       serInUSB                                | No, start again
+                    BSR       readChUSB                               | Yes, read USB char
+                    CMPI.B    #ESC,%D0                                | If it is an Escape char, exit
+                    BEQ       2f
+
+                    BSR       writeCh                                 | Echo it to the console
+
+                    CMPI.B    #CR,%D0                                 | If it is a carriage return output a line feed as well
+                    BNE       serInUSB
+
+                    MOVE.B    #LF,%D0                                 | Output a line feed char for every carriage return
+                    BSR       writeCh                                 | Echo it on the console
+
+                    BRA       serInUSB
+2:                  RTS
+
+* ----------------------------------------------------------------------------------
 * Output to serial port usb
 * ----------------------------------------------------------------------------------
 serOutUSB:          BSR       readCh                                  | Read a character from console keyboard
 
-                    CMPI      #ESC,%D0                                | If it is an Escape char, exit
+                    CMPI.B    #ESC,%D0                                | If it is an Escape char, exit
                     BEQ       2f
 
                     BSR       writeChUSB                              | Write it to the usb port
                     BSR       writeCh                                 | Echo it to the console
 
-                    CMPI      #CR,%D0                                 | If it is a carriage return output a line feed as well
+                    CMPI.B    #CR,%D0                                 | If it is a carriage return output a line feed as well
                     BNE       serOutUSB
 
                     MOVE.B    #LF,%D0                                 | Output a line feed char for every carriage return
@@ -215,19 +269,23 @@ serOutUSB:          BSR       readCh                                  | Read a c
                     BRA       serOutUSB
 2:                  RTS
 
+* ----------------------------------------------------------------------------------
+* Input from the configured serial port
+* ----------------------------------------------------------------------------------
+serIn:              RTS
 
 * ----------------------------------------------------------------------------------
-* Output to the configuraed serial port
+* Output to the configured serial port
 * ----------------------------------------------------------------------------------
 serOut:             BSR       readCh                                  | Read a character from console keyboard
 
-                    CMPI      #ESC,%D0                                | If it is an Escape char, exit
+                    CMPI.B    #ESC,%D0                                | If it is an Escape char, exit
                     BEQ       2f
 
                     BSR       outch                                   | Write it to the serial port
                     BSR       writeCh                                 | Echo it to the console
 
-                    CMPI      #CR,%D0
+                    CMPI.B    #CR,%D0
                     BNE       serOut
 
                     MOVE.B    #LF,%D0                                 | Output a line feed char for every carriage return
@@ -257,13 +315,13 @@ outch:              BTST      #ZSCC_TBE,(%A0)                         | Wait unt
 * Loopback, read a character from the port then write it back to the port
 * ----------------------------------------------------------------------------------
 loopBack:           BSR       getch                                   | Wait for and read a character
-                    CMPI      #ESC,%D0                                | If it is an Escape char, exit
+                    CMPI.B    #ESC,%D0                                | If it is an Escape char, exit
                     BEQ       2f
 
                     BSR       outch                                   | Echo it back to the serial port
                     BSR       writeCh                                 | Display it on the console
 
-                    CMPI      #CR,%D0
+                    CMPI.B    #CR,%D0
                     BNE       loopBack
 
                     MOVE.B    #LF,%D0                                 | Output a line feed char for every carriage return
@@ -355,11 +413,23 @@ serReset:           MOVE.B    #0x09,ZSCC_A_CTL                        | WR 9
                     RTS
 
 * ----------------------------------------------------------------------------------
+*  0x03FE -    150 baud
+*  0x01FE -    300 baud
+*  0x00FE -    600 baud
+*  0x007E -  1,200 baud
+*  0x003E -  2,400 baud
+*  0x001E -  4,800 baud
+*  0x000E -  9,600 baud
+*  0x0006 - 19,200 baud
+*  0x0002 - 38,400 baud
+* ----------------------------------------------------------------------------------
+
+* ----------------------------------------------------------------------------------
 * Initialisation commands for each Z8530 channel
 * ----------------------------------------------------------------------------------
 initCmds:           dc.b      0x04, 0x44                              | WR4:  X16 clock, 1 Stop, NP
-                    dc.b      0x0B, 0x56                              | WR11: Receive/transmit clock = BRG
-                    dc.b      0x0C, 0x02                              | WR12: Low byte 38,400 Baud
+                    dc.b      0x0B, 0x50                              | WR11: Receive/transmit clock = BRG
+                    dc.b      0x0C, 0x0E                              | WR12: Low byte for Baud
                     dc.b      0x0D, 0x00                              | WR13: High byte for Baud
                     dc.b      0x0E, 0x01                              | WR14: Use 4.9152 MHz Clock, enable BRG
                     dc.b      0x01, 0x12                              | WR1:  Enable Tx int, enable Rx int on all chars

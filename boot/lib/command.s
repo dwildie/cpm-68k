@@ -5,7 +5,7 @@
 
 lineBufferLen       =         60
 maxTokens           =         4
-                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd,readPortCmd,writePortCmd,bootCromixCmd,serialCmdCmd
+                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd,readPortCmd,writePortCmd,bootCromixCmd,serialCmdCmd,serialInCmd,serialLoopCmd
 *---------------------------------------------------------------------------------------------------------
                     .bss
                     .align(2)
@@ -61,6 +61,7 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                   : Decrement LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs                : Display the registers", 0
                     CMD_TABLE_ENTRY "scmd", "sc", serialCmdCmd, "scmd <[A|B]> Reg Val: Send Val to register Reg for port A, B", 0
+*                    CMD_TABLE_ENTRY "sin", "sn", serialInCmd, "sin <[A|B|U]>       : Input from Serial port A, B or USB to console", 0
                     CMD_TABLE_ENTRY "sinit", "si", serialInitCmd, "sinit <[A|B]>       : Initialise serial port A or B", 0
                     CMD_TABLE_ENTRY "sloop", "sl", serialLoopCmd, "sloop <[A|B|U]>     : Loopback serial port A, B or USB", 0
                     CMD_TABLE_ENTRY "sout", "so", serialOutCmd, "sout <[A|B|U]>      : Console out to serial port A, B or USB", 0
@@ -72,6 +73,7 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "status", "status", statusCmd, "status              : Read the status register of the current drive", 0
                     CMD_TABLE_ENTRY "testb", "tb", testByteCmd, "testb <addr> <len>  : Memory test <len> bytes starting at <addr>", 0
                     CMD_TABLE_ENTRY "testd", "td", testDWordCmd, "testd <addr> <len>  : Memory test <len> double words starting at <addr>", 0
+                    CMD_TABLE_ENTRY "testf", "tf", testDWordFCmd, "testf <addr> <len>  : Memory fast test <len> double words starting at <addr>", 0
           .endif
                     CMD_TABLE_ENTRY "w0", "w0", ideWait0Cmd, "w0                  : Set the IDE wait 0 parameter", 1
                     CMD_TABLE_ENTRY "w1", "w1", ideWait1Cmd, "w1                  : Set the IDE wait 1 parameter", 1
@@ -404,12 +406,15 @@ diskDefCmd:         BSR       showDiskDef
 *---------------------------------------------------------------------------------------------------------
 * Boot cromix
 *---------------------------------------------------------------------------------------------------------
-bootCromixCmd:      CMPI.B    #2,%D0                                  | Needs one or two args
+bootCromixCmd:
+                    CMPI.B    #2,%D0                                  | Needs one or two args
                     BGT       wrongArgs
-                    BEQ       1f
+                    MOVE.B    %D0,%D7                                 | Stash the arg count in D7
 
-                    BSR       cromixBootLoader
-                    BRA       10f
+*                    BEQ       1f
+*
+*                    BSR       cromixBootLoader
+*                    BRA       10f
 
 
 1:                  MOVE.W    currentDrive,-(%SP)                     | Get current drive
@@ -431,9 +436,13 @@ bootCromixCmd:      CMPI.B    #2,%D0                                  | Needs on
                     BRA       10f
 
 3:                  MOVE.L    #0,-(%SP)                               | Write to offset 0
-                    MOVE.L    4(%A0),-(%SP)                           | Argument specifies the cromix.sys file
+                    CMPI.B    #2,%D7                                  | Check the argument count to see if a sys file has been specified
+                    BEQ       4f                                      | Sys file has been specified
+                    MOVE.L    #strCromixSys, -(%SP)                   | Sys file has not been specified, assume cromix.sys
+                    BRA       5f
+4:                  MOVE.L    4(%A0),-(%SP)                           | Argument specifies the cromix.sys file
 
-                    MOVE.W    currentDrive,-(%SP)                     | driveId
+5:                  MOVE.W    currentDrive,-(%SP)                     | driveId
                     BSR       getPartitionId                          | Get the drive's current partition
                     ADD       #2,%SP
 
@@ -544,6 +553,33 @@ testDWordCmd:       CMPI.B    #3,%D0                                  | Needs th
 
 1:                  MOVE.L    (%SP)+,%A0                              | Restore the start address to %A0, length is now in %D0
                     BSR       memDWordTest
+
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Memory double word fast test command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+testDWordFCmd:      CMPI.B    #3,%D0                                  | Needs three args
+                    BLT       wrongArgs
+
+                    MOVE.B    %D0,%D2                                 | Save arg count
+
+                    MOVE.L    %A0,%A1                                 | Use A1
+
+                    MOVE.L    4(%A1),%A0                              | arg[1], start address
+                    BSR       asciiToLong
+                    TST.L     %D0
+                    BLT       invalidArg                              | Invalid
+
+                    MOVE.L    %D0,-(%SP)                              | preserve the address
+
+                    MOVE.L    8(%A1),%A0                              | arg[2], length
+                    BSR       asciiToLong
+                    TST.L     %D0
+                    BLT       invalidArg                              | Invalid
+
+1:                  MOVE.L    (%SP)+,%A0                              | Restore the start address to %A0, length is now in %D0
+                    BSR       memDWordFast
 
                     RTS
           .endif
@@ -947,6 +983,47 @@ serialCmdGet:       MOVE.L    0x8(%A1),%A0                            | arg[2], 
 3:                  BRA       wrongArgs
 
 *---------------------------------------------------------------------------------------------------------
+* Serial port input command
+*---------------------------------------------------------------------------------------------------------
+serialInCmd:        CMPI.B    #2,%D0                                  | Needs two args to loopback a serial port
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  MOVE.L    4(%A0),%A0                              | arg[1], serial port A, B or U
+                    MOVE.B    (%A0),%D1                               | Get first character
+                    BSR       toUpperChar
+
+                    CMPI.B    #DEV_SER_A,%D1
+                    BNE       2f
+
+                    PUTS      strSerialIn
+                    PUTCH     #DEV_SER_A
+                    BSR       newLine
+                    BSR       serInA
+                    BRA       5f
+
+2:                  CMPI.B    #DEV_SER_B,%D1
+                    BNE       3f
+
+                    PUTS      strSerialIn
+                    PUTCH     #DEV_SER_B
+                    BSR       newLine
+                    BSR       serInB
+                    BRA       5f
+
+3:                  CMPI.B    #DEV_USB,%D1
+                    BNE       4f
+
+                    PUTS      strSerialIn
+                    PUTS      strUSB
+                    BSR       newLine
+                    BSR       serInUSB
+                    BRA       5f
+
+4:                  BRA       wrongArgs
+5:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
 * Serial port output command
 *---------------------------------------------------------------------------------------------------------
 serialOutCmd:       CMPI.B    #2,%D0                                  | Needs two args to loopback a serial port
@@ -1207,6 +1284,7 @@ strCurrentWaitParameter: .asciz "\r\nCurrent wait parameter: 0x"
 strNewWaitParameter: .asciz   "\r\nNew wait parameter:     0x"
 strInvalidValue:    .asciz    "\r\nInvalid value\r\n"
 strEqualsHex:       .asciz    " = 0x"
+strCromixSys:       .asciz    "cromix.sys"
 strBootingCromix:   .asciz    "\r\nBooting cromix ...\r\n"
 strNoFile:          .asciz    "\r\nFile not found\r\n"
 
@@ -1219,6 +1297,7 @@ strWritePortB:      .asciz    " to port 0x"
 strSerialInit:      .asciz    "\r\nInitialising serial port "
 strSerialStatus:    .asciz    "\r\nStatus of serial port "
 strSerialLoop:      .asciz    "\r\nLoopback serial port "
+strSerialIn:        .asciz    "\r\nInput from serial port "
 strSerialOut:       .asciz    "\r\nOutput to serial port "
 strUSB:             .asciz    "USB\r\n"
 strCacheRegister:   .asciz    "\r\nCache register: "
