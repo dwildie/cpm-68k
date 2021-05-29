@@ -66,19 +66,24 @@ int vfMount(char *name, unsigned int imageIndex) {
 		image->fp = fl_fopen(path, "r+");
 		if (image->fp != NULL) {
 			if (fl_fread(&(image->info), sizeof(vflop_info), 1, image->fp) == sizeof(vflop_info)) {
-				strncpy(image->name, name, NAME_LEN);
-				result = 0;
+				if (strncmp(image->info.magic, "VFD", 3) == 0) {
+					strncpy(image->name, name, NAME_LEN);
+					result = 0;
+				} else {
+					printf("File %s is not a valid VFD image\r\n", name);
+				}
 			} else {
-				printf("Could not read %d bytes from file %s\r\n", sizeof(vflop_info), path);
-				fl_fclose(image->fp);
-				image->fp = NULL;
+				printf("Could not read %d bytes from file %s\r\n", sizeof(vflop_info), name);
 			}
 		} else {
-			printf("Could not open file %s\r\n", path);
+			printf("Could not open file %s\r\n", name);
 		}
 
 		if (result == 0) {
 			vfList();
+		} else if (image->fp != NULL) {
+			fl_fclose(image->fp);
+			image->fp = NULL;
 		}
 	}
 
