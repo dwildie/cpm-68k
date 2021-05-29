@@ -43,46 +43,6 @@ cmxGetDriveStatus:  MOVE.L    %D1,-(%SP)
                     RTS
 
 *-----------------------------------------------------------------------------------------------------
-* Read drive block (long drive, long lba, byte *buffer, long count)
-*-----------------------------------------------------------------------------------------------------
-cmxReadDriveBlock:  LINK      %FP,#0
-                    MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
-
-                    MOVE.L    0x08(%FP),%D0                           | Param - drive
-                    BSR       setIdeDrive                             | Select drive
-
-                    MOVE.L    0x0C(%FP),%D0                           | Param - LBA
-                    BSR       setLBA                                  | Set the LBA
-
-                    MOVE.L    0x10(%FP),%A2                           | Param - Buffer address
-                    MOVE.L    0x14(%FP),%D0                           | Param - Sector count
-                    BSR       readSectors                             | Read the sectors
-
-                    MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
-                    UNLK      %FP
-                    RTS
-
-*-----------------------------------------------------------------------------------------------------
-* Write drive block (long drive, long lba, byte *buffer, long count)
-*-----------------------------------------------------------------------------------------------------
-cmxWriteDriveBlock: LINK      %FP,#0
-                    MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
-
-                    MOVE.L    0x08(%FP),%D0                           | Param - drive
-                    BSR       setIdeDrive                             | Select drive
-
-                    MOVE.L    0x0C(%FP),%D0                           | Param - LBA
-                    BSR       setLBA                                  | Set the LBA
-
-                    MOVE.L    0x10(%FP),%A2                           | Param - Buffer address
-                    MOVE.L    0x14(%FP),%D0                           | Param - Sector count
-                    BSR       writeSectors                            | Read the sectors
-
-                    MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
-                    UNLK      %FP
-                    RTS
-
-*-----------------------------------------------------------------------------------------------------
 * Initialise the console
 *-----------------------------------------------------------------------------------------------------
 cmxInitConsole:     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)

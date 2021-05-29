@@ -5,8 +5,8 @@ int mediaRead(unsigned long sector, unsigned char *buffer, unsigned long sector_
 int mediaWrite(unsigned long sector, unsigned char *buffer, unsigned long sector_count);
 
 extern unsigned long getPartitionStart(unsigned long currentDriveId, unsigned long currentPartitionId);
-extern void rdSectors(unsigned long sector, unsigned char *buffer, unsigned long sectorCount);
-extern void wrSectors(unsigned long sector, unsigned char *buffer, unsigned long sectorCount);
+extern void readDriveSectors(unsigned long currentDriveId, unsigned long sector, unsigned char *buffer, unsigned long sectorCount);
+extern void writeDriveSectors(unsigned long currentDriveId, unsigned long sector, unsigned char *buffer, unsigned long sectorCount);
 
 
 static int currentDriveId, currentPartitionId;
@@ -30,14 +30,14 @@ int mediaInit(int driveId, int partitionId)
 int mediaRead(unsigned long sector, unsigned char *buffer, unsigned long sectorCount)
 {
 	unsigned long startOffset = getPartitionStart(currentDriveId, currentPartitionId);
-	rdSectors(startOffset + sector, buffer, sectorCount);
+	readDriveSectors(currentDriveId, startOffset + sector, buffer, sectorCount);
     return 1;
 }
 
 int mediaWrite(unsigned long sector, unsigned char *buffer, unsigned long sectorCount)
 {
 	unsigned long startOffset = getPartitionStart(currentDriveId, currentPartitionId);
-	wrSectors(startOffset + sector, buffer, sectorCount);
+	writeDriveSectors(currentDriveId, startOffset + sector, buffer, sectorCount);
     return 1;
 }
 

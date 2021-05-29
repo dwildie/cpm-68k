@@ -5,7 +5,9 @@
 
 lineBufferLen       =         60
 maxTokens           =         4
-                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd,readPortCmd,writePortCmd,bootCromixCmd,serialCmdCmd,serialInCmd,serialLoopCmd
+
+                    .global   vfiCmd, vfmCmd, vfuCmd
+
 *---------------------------------------------------------------------------------------------------------
                     .bss
                     .align(2)
@@ -79,6 +81,12 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "w1", "w1", ideWait1Cmd, "w1                  : Set the IDE wait 1 parameter", 1
                     CMD_TABLE_ENTRY "w2", "w2", ideWait2Cmd, "w2                  : Set the IDE wait 2 parameter", 1
                     CMD_TABLE_ENTRY "w3", "w3", ideWait3Cmd, "w3                  : Set the IDE wait 3 parameter", 1
+
+                    CMD_TABLE_ENTRY "vfinit", "vfi", vfiCmd, "vfinit drv part     : Initialise the virtual floppy", 0
+                    CMD_TABLE_ENTRY "vflist", "vfl", vflCmd, "vflist              : List mounted virtual floppies", 0
+                    CMD_TABLE_ENTRY "vfmount", "vfm", vfmCmd, "vfmount index name  : Mount a virtual floppy", 0
+                    CMD_TABLE_ENTRY "vfumount", "vfu", vfuCmd, "vfumount index      : Un-mount a virtual floppy", 0
+
 
 cmdTableLength      =         . - cmdTable
 cmdEntryLength      =         0x12
@@ -1168,6 +1176,95 @@ writePortCmd:       CMPI.B    #3,%D0                                  | Needs th
 
                     RTS
           .endif
+
+*---------------------------------------------------------------------------------------------------------
+* Virtual floppy init command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+vfiCmd:             CMPI.B    #3,%D0                                  | Needs three args
+                    BLT       wrongArgs
+
+                    MOVE.L    %A0,%A1                                 | Use A1
+
+                    MOVE.L    8(%A1),%A0                              | arg[2], partition id
+                    BSR       asciiToLong
+                    CMPI      #3,%D0
+                    BGT       invalidArg
+                    MOVE.L    %D0,-(%SP)                              | Calling arg
+
+                    MOVE.L    4(%A1),%A0                              | arg[1], drive id
+                    BSR       asciiToLong
+                    CMPI      #1,%D0
+                    BGT       invalidArg
+                    MOVE.L    %D0,-(%SP)                              | Calling arg		
+
+                    BSR       newLine
+
+                    BSR       vfInit
+                    ADD.L     #8,%SP
+
+                    TST.L     %D0
+                    BEQ       1f
+                    PUTS      strError
+                    BRA       2f
+
+1:                  PUTS      strSuccess
+
+2:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Virtual floppy mount command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+vfmCmd:             CMPI.B    #3,%D0                                  | Needs three args
+                    BLT       wrongArgs
+
+                    MOVE.L    %A0,%A1                                 | Use A1
+
+                    MOVE.L    4(%A1),%A0                              | arg[1], floppy index
+                    BSR       asciiToLong
+                    CMPI      #3,%D0
+                    BGT       invalidArg
+                    MOVE.L    %D0,-(%SP)                              | Calling arg
+
+                    MOVE.L    8(%A1),-(%SP)                           | arg[2], file name
+
+                    BSR       newLine
+
+                    BSR       vfMount
+                    ADD.L     #8,%SP
+
+                    TST.L     %D0
+                    BEQ       1f
+                    PUTS      strError
+
+1:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Virtual floppy umount command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+vfuCmd:             CMPI.B    #2,%D0                                  | Needs two args
+                    BLT       wrongArgs
+
+                    MOVE.L    %A0,%A1                                 | Use A1
+
+                    MOVE.L    4(%A1),%A0                              | arg[1], floppy index
+                    BSR       asciiToLong
+                    CMPI      #3,%D0
+                    BGT       invalidArg
+                    MOVE.L    %D0,-(%SP)                              | Calling arg
+
+                    BSR       newLine
+
+                    BSR       vfUmount
+                    ADD.L     #4,%SP
+
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Virtual floppy list command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+vflCmd:             BSR       newLine
+                    BSR       vfList
+                    RTS
 
 *---------------------------------------------------------------------------------------------------------
 * Set the IDE Wait 0 parameter

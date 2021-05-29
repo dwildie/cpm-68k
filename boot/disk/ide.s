@@ -25,8 +25,8 @@ delayThree:         .word     0x400
                     .global   initIdeDrive
                     .global   getDriveIdent
                     .global   readStatus,readError
-                    .global   readSectors,rdSectors
-                    .global   writeSectors,wrSectors
+                    .global   readSectors,readDriveSectors
+                    .global   writeSectors,writeDriveSectors
                     .global   showErrors
 
 *-----------------------------------------------------------------------------------------------------
@@ -157,19 +157,22 @@ setIdeLba:          BSR       waitNotBusy                             | make sur
                     RTS
 
 *----------------------------------------------------------------------------------------------------
-* rdSectors(long lba, byte *buffer, long count)
+* readDriveSectors(long drive, long lba, byte *buffer, long count)
 *----------------------------------------------------------------------------------------------------
-rdSectors:          LINK      %FP,#0
-                    MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+readDriveSectors:   LINK      %FP,#0
+                    MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 
-                    MOVE.L    0x08(%FP),%D0
-                    BSR       setIdeLba
+                    MOVE.L    0x08(%FP),%D0                           | Param - drive
+                    BSR       setIdeDrive                             | Select drive
 
-                    MOVE.L    0x0C(%FP),%A2
-                    MOVE.L    0x10(%FP),%D0
+                    MOVE.L    0x0C(%FP),%D0                           | Param - lba
+                    BSR       setIdeLba                               | Set LBA
+
+                    MOVE.L    0x10(%FP),%A2                           | Param - buffer
+                    MOVE.L    0x14(%FP),%D0                           | Param - count
                     BSR       readSectors
 
-                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
                     UNLK      %FP
                     RTS
 
@@ -234,19 +237,22 @@ readSector:         MOVE.B    #REG_DATA,I8255_PORT_C                  | REG regi
 
 
 *----------------------------------------------------------------------------------------------------
-* wrSectors(long lba, byte *buffer, long count)
+* writeDriveSectors(long drive, long lba, byte *buffer, long count)
 *----------------------------------------------------------------------------------------------------
-wrSectors:          LINK      %FP,#0
-                    MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+writeDriveSectors:  LINK      %FP,#0
+                    MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 
-                    MOVE.L    0x08(%FP),%D0
-                    BSR       setIdeLba
+                    MOVE.L    0x08(%FP),%D0                           | Param - drive
+                    BSR       setIdeDrive                             | Select drive
 
-                    MOVE.L    0x0C(%FP),%A2
-                    MOVE.L    0x10(%FP),%D0
-                    BSR       writeSectors
+                    MOVE.L    0x0C(%FP),%D0                           | Param - LBA
+                    BSR       setLBA                                  | Set the LBA
 
-                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    MOVE.L    0x10(%FP),%A2                           | Param - Buffer address
+                    MOVE.L    0x14(%FP),%D0                           | Param - Sector count
+                    BSR       writeSectors                            | Read the sectors
+
+                    MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
                     UNLK      %FP
                     RTS
 
@@ -369,10 +375,10 @@ waitNotBusy:        MOVE.W    delayThree,%D6                          | Delay co
                     MOVE.B    #0x20,%D1                               | Short delay before retry
 2:                  SUBQ.B    #1,%D1
                     BNE       2b
-                    
+
                     SUBQ.W    #1,%D6
                     BNE       1b
-                    
+
                     MOVE.B    #0xFF,%D0
                     LSL.B     #1,%D0                                  | Set carry to indicate an error
                     RTS

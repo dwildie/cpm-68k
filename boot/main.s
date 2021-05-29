@@ -23,11 +23,13 @@
 *---------------------------------------------------------------------------------------------------------
 cmxTable:           DC.L      cmxInitDrives
                     DC.L      cmxGetDriveStatus
-                    DC.L      cmxReadDriveBlock
-                    DC.L      cmxWriteDriveBlock
+                    DC.L      readDriveSectors
+                    DC.L      writeDriveSectors
                     DC.L      cmxInitConsole
                     DC.L      cmxOutChar
                     DC.L      cmxInChar
+                    DC.L      vfRead
+                    DC.L      vfWrite
 
 *---------------------------------------------------------------------------------------------------------
 * Entry point

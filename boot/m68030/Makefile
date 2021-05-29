@@ -10,6 +10,8 @@ CCFLAGS += -m68010
 #CCFLAGS += -ggdb
 CCFLAGS += -nostdlib
 CCFLAGS += -nodefaultlibs
+CCFLAGS += -ffreestanding
+CCFLAGS += -DNO_UNISTD_H
 CCFLAGS += -I../include
 CCFLAGS += -I../../baselibc/include
 CCFLAGS += -I../../fat/include
@@ -46,7 +48,10 @@ LIB_AS_OBJ = $(patsubst ../lib/%.s, obj/lib/%.o, $(LIB_AS_SRC))
 SREC_AS_SRC = $(wildcard ../s-record/*.s)
 SREC_AS_OBJ = $(patsubst ../s-record/%.s, obj/s-record/%.o, $(SREC_AS_SRC))
 
-OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(IO_AS_OBJ) $(IO_C_OBJ) $(DSK_AS_OBJ) $(DSK_C_OBJ) $(SREC_AS_OBJ) 
+VFLP_C_SRC = $(wildcard ../vflop/*.c)
+VFLP_C_OBJ = $(patsubst ../vflop/%.c, obj/vflop/%.o, $(VFLP_C_SRC))
+
+OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(IO_AS_OBJ) $(IO_C_OBJ) $(DSK_AS_OBJ) $(DSK_C_OBJ) $(SREC_AS_OBJ) $(VFLP_C_OBJ)
 
 # --------------------------------------------------------------------------------
 # Dependencies
@@ -75,6 +80,10 @@ obj/lib/%.o:	../lib/%.s | obj/lib
 
 obj/s-record/%.o:	../s-record/%.s | obj/s-record
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
+
+obj/vflop/%.o:	../vflop/%.c | obj/vflop
+	$(CC) $(CCFLAGS) -S -o $(@:.o=.s) $<
+	$(CC) $(CCFLAGS) -c -o $@ $<
 
 # --------------------------------------------------------------------------------
 # M68030 CPM Boot Loader
@@ -118,6 +127,9 @@ obj/s-record: obj
 	mkdir -p $@
 
 obj/bios: obj
+	mkdir -p $@
+
+obj/vflop: obj
 	mkdir -p $@
 
 target:
