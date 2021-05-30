@@ -1,6 +1,6 @@
 #include "inttypes.h"
 
-#define NAME_LEN 13
+#define NAME_LEN 12
 #define MAX_IMAGES 4
 #define IDE_SECTOR_SIZE 512
 
@@ -21,7 +21,7 @@ typedef struct {
 } vflop_info;
 
 typedef struct {
-	char name[NAME_LEN];
+	char name[NAME_LEN + 1];
 	void *fp;
 	vflop_info info;
 } vflop_image;

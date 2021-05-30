@@ -23,13 +23,14 @@
 *---------------------------------------------------------------------------------------------------------
 cmxTable:           DC.L      cmxInitDrives
                     DC.L      cmxGetDriveStatus
-                    DC.L      readDriveSectors
-                    DC.L      writeDriveSectors
+                    DC.L      readDriveSectors                        | Read IDE sectors
+                    DC.L      writeDriveSectors                       | Write IDE sectors
                     DC.L      cmxInitConsole
-                    DC.L      cmxOutChar
-                    DC.L      cmxInChar
-                    DC.L      vfRead
-                    DC.L      vfWrite
+                    DC.L      cmxOutChar                              | Output a character to the console
+                    DC.L      cmxInChar                               | Input a character from the console
+                    DC.L      vfInfo                                  | Get the virtual floppy mount table
+                    DC.L      vfRead                                  | Read virtual floppy sectors
+                    DC.L      vfWrite                                 | Write virtual floppy sectors
 
 *---------------------------------------------------------------------------------------------------------
 * Entry point
