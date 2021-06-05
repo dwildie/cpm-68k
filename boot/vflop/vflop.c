@@ -3,7 +3,6 @@
 #include "fat_filelib.h"
 
 static vflop_image images[MAX_IMAGES];
-static int pId;
 
 extern int mediaInit(int driveId, int partitionId);
 
@@ -102,12 +101,20 @@ int vfMount(char *name, unsigned int imageIndex) {
 int vfRead(unsigned int dev, unsigned int cylinder, unsigned int head, unsigned int sector, unsigned int bytes, char *address) {
 	unsigned int result = -1;
 
-	printf("vfRead dev=%d, cyl=%d, head=%d, sector=%d, bytes=%d\r\n", dev, cylinder, head, sector, bytes);
+	printf("vfRead dev=%d, cyl=0x%x, head=0x%x, sector=0x%x, bytes=0x%x\r\n", dev, cylinder, head, sector, bytes);
 	if (dev < MAX_IMAGES) {
 		vflop_image *image = &images[dev];
 		if (image->fp != NULL) {
-			track_info *track = (cylinder == 0 && head == 0) ? &(image->info.first) : &(image->info.rest);
-			unsigned int offset = track->offset + (cylinder * image->info.heads + head) * (track->sectors * track->sectorBytes) + sector * track->sectorBytes;
+      track_info *track = NULL;
+      unsigned int offset = -1;
+      if (cylinder == 0 && head == 0) {
+        track = &(image->info.first);
+        offset = track->offset + sector * track->sectorBytes;
+      } else {
+        track = &(image->info.rest);
+        offset = track->offset + (cylinder * image->info.heads + head - 1) * (track->sectors * track->sectorBytes) + sector * track->sectorBytes;
+      }
+
 			printf("vfRead dev=%d, offset=0x%x\r\n", dev, offset);
 			if (fl_fseek(image->fp, offset, SEEK_SET) == 0) {
 				int bytesRead = fl_fread(address, 1, bytes, image->fp);
@@ -128,22 +135,29 @@ int vfRead(unsigned int dev, unsigned int cylinder, unsigned int head, unsigned 
 int vfWrite(unsigned int dev, unsigned int cylinder, unsigned int head, unsigned int sector, unsigned int bytes, char *address) {
 	unsigned int result = -1;
 
-	printf("vfWrite dev=%d, cyl=%d, head=%d, sector=%d, bytes=%d\r\n", dev, cylinder, head, sector, bytes);
+	printf("vfWrite dev=%d, cyl=0x%x, head=0x%x, sector=0x%x, bytes=0x%x\r\n", dev, cylinder, head, sector, bytes);
 	if (dev < MAX_IMAGES) {
 		vflop_image *image = &images[dev];
 		if (image->fp != NULL) {
-			track_info *track = (cylinder == 0 && head == 0) ? &(image->info.first) : &(image->info.rest);
-			unsigned int offset = track->offset + (cylinder * image->info.heads + head) * (track->sectors * track->sectorBytes) + sector * track->sectorBytes;
-			unsigned int sectors = bytes / track->sectorBytes;
-			printf("vfWrite dev=%d, offset=0x%x, sectors=%d\r\n", dev, offset, sectors);
+      track_info *track = NULL;
+      unsigned int offset = -1;
+      if (cylinder == 0 && head == 0) {
+        track = &(image->info.first);
+        offset = track->offset + sector * track->sectorBytes;
+      } else {
+        track = &(image->info.rest);
+        offset = track->offset + (cylinder * image->info.heads + head - 1) * (track->sectors * track->sectorBytes) + sector * track->sectorBytes;
+      }
+
+			printf("vfWrite dev=%d, offset=0x%x\r\n", dev, offset);
 			if (fl_fseek(image->fp, offset, SEEK_SET) == 0) {
-				int bytesWritten = fl_fwrite(address, track->sectorBytes, sectors, image->fp);
+				int bytesWritten = fl_fwrite(address, 1, bytes, image->fp);
 				fl_fflush(image->fp);
         if (bytesWritten == bytes) {
           result = 0;
         }
 			} else {
-				printf("vfWrite dev=%d, offset=0x%x, sectors=%d, seek failed\r\n", dev, offset, sectors);
+				printf("vfWrite dev=%d, offset=0x%x, seek failed\r\n", dev, offset);
 			}
 		} else {
 			printf("vfWrite device %d is not mounted\r\n", dev);
