@@ -28,7 +28,15 @@ dumpAddr:           ds.l      1
 
 cmdTable:                                                             | Array of command entries
                     CMD_TABLE_ENTRY "a", "a:", driveACmd, "a                   : Select drive A", 0
+                    CMD_TABLE_ENTRY "a0", "a:0", driveACmd, "a:0                 : Select drive A, partition 0", 1
+                    CMD_TABLE_ENTRY "a1", "a:1", driveACmd, "a:1                 : Select drive A, partition 1", 1
+                    CMD_TABLE_ENTRY "a2", "a:2", driveACmd, "a:2                 : Select drive A, partition 2", 1
+                    CMD_TABLE_ENTRY "a3", "a:3", driveACmd, "a:3                 : Select drive A, partition 3", 1
                     CMD_TABLE_ENTRY "b", "b:", driveBCmd, "b                   : Select drive B", 0
+                    CMD_TABLE_ENTRY "b0", "b:0", driveBCmd, "b:0                 : Select drive B, partition 0", 1
+                    CMD_TABLE_ENTRY "b1", "b:1", driveBCmd, "b:1                 : Select drive B, partition 1", 1
+                    CMD_TABLE_ENTRY "b2", "b:2", driveBCmd, "b:2                 : Select drive B, partition 2", 1
+                    CMD_TABLE_ENTRY "b3", "b:3", driveBCmd, "b:3                 : Select drive B, partition 3", 1
           .ifdef              IS_68030
                     CMD_TABLE_ENTRY "cas", "cas", showCacheCmd, "cas                 : Show the cache control register", 0
                     CMD_TABLE_ENTRY "cai", "cai", enableAddressCacheCmd, "cai                 : Enable the address cache", 0
@@ -203,13 +211,51 @@ unknownCmd:         PUTS      strUnknownCommand
 * Select drive A
 *---------------------------------------------------------------------------------------------------------
 driveACmd:          BSR       selectDriveA
-                    RTS
+                    MOVE.L    (%A0),%A1
+
+                    MOVE.B    1(%A1),%D0                              | 2nd character must be a colon
+                    CMPI.B    #':', %D0
+                    BNE       1f
+
+                    MOVE.B    2(%A1),%D0
+                    SUBI.B    #'0',%D0
+                    CMPI.B    #0,%D0
+                    BLT       1f
+                    CMPI.B    #4,%D0
+                    BGE       1f
+
+                    EXT.W     %D0
+                    MOVE.W    %D0,-(%SP)                              | specified partitionId
+                    MOVE.W    currentDrive,-(%SP)                     | current driveId
+                    BSR       setPartitionId
+                    ADD.L     #4,%SP
+
+1:                  RTS
 
 *---------------------------------------------------------------------------------------------------------
 * Select drive B
 *---------------------------------------------------------------------------------------------------------
 driveBCmd:          BSR       selectDriveB
-                    RTS
+                    MOVE.L    (%A0),%A1
+
+                    MOVE.B    1(%A1),%D0                              | 2nd character must be a colon
+                    CMPI.B    #':', %D0
+                    BNE       1f
+
+                    MOVE.B    2(%A1),%D0
+                    SUBI.B    #'0',%D0
+                    CMPI.B    #0,%D0
+                    BLT       1f
+                    CMPI.B    #4,%D0
+                    BGE       1f
+
+                    EXT.W     %D0
+                    MOVE.W    %D0,-(%SP)                              | specified partitionId
+                    MOVE.W    currentDrive,-(%SP)                     | current driveId
+                    BSR       setPartitionId
+                    ADD.L     #4,%SP
+
+1:                  RTS
 
 *---------------------------------------------------------------------------------------------------------
 * Select the partition
