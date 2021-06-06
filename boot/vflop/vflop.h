@@ -12,9 +12,9 @@ typedef struct {
 
 typedef struct {
 	char magic[4];
-	uint16_t major;
-	uint16_t minor;
-	uint16_t cylinders;		/* Number of cylinders, track count = cylinders * heads */
+	uint16_t major;     /* Major version number */
+	uint16_t minor;     /* Minor version number */
+	uint16_t cylinders;	/* Number of cylinders, track count = cylinders * heads */
 	uint16_t heads;			/* Number of heads, 2 for double sides, 1 for single */
 	track_info first;		/* Info for the first track, ie. cylinder 0, head 0 */
 	track_info rest;		/* Info for all other tracks */
@@ -26,3 +26,9 @@ typedef struct {
 	vflop_info info;
 } vflop_image;
 
+typedef struct {
+  char driveLetter;
+  uint16_t driveId;
+  uint16_t partitionId;
+  vflop_image images[MAX_IMAGES];
+} vflop_table;

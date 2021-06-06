@@ -28,7 +28,9 @@ cmxTable:           DC.L      cmxInitDrives
                     DC.L      cmxInitConsole
                     DC.L      cmxOutChar                              | Output a character to the console
                     DC.L      cmxInChar                               | Input a character from the console
-                    DC.L      vfInfo                                  | Get the virtual floppy mount table
+                    DC.L      vfTable                                 | Get the virtual floppy mount table
+                    DC.L      vfMount                                 | Mount a virtual floppy image
+                    DC.L      vfUmount                                | Unmount a virtual floppy image
                     DC.L      vfRead                                  | Read virtual floppy sectors
                     DC.L      vfWrite                                 | Write virtual floppy sectors
 
