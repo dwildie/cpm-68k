@@ -167,7 +167,7 @@ readMBR:            LINK      %FP,#0
                     TO_BIG_END %D2                                    | Convert to big endian
                     MOVE.L    %D2,PE_START(%A4)                       | Save in our table entry
                     CMP.L     %D1,%D2                                 | Start LBA must be less then max LBA
-                    BLE       2f
+                    BLS       2f
 
                     TST       0x0A(%FP)                               | If quiet, don't show error
                     BNE       7f
@@ -180,7 +180,7 @@ readMBR:            LINK      %FP,#0
                     ADD.L     %D2,%D3                                 | Partion end LBA
                     SUBQ.L    #1,%D3
                     CMP.L     %D1,%D3                                 | End LBA must be less then max LBA
-                    BLE       3f
+                    BLS       3f
 
                     TST       0x0A(%FP)                               | If quiet, don't show error
                     BNE       7f
@@ -188,7 +188,7 @@ readMBR:            LINK      %FP,#0
                     BRA       7f
 
 3:                  CMP.L     %D2,%D3                                 | End LBA must be > start lba
-                    BGT       4f
+                    BHI       4f
 
                     TST       0x0A(%FP)                               | If quiet, don't show error
                     BNE       7f
