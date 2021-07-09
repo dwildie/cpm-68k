@@ -216,7 +216,6 @@ readSectors:        BSR       waitNotBusy                             | make sur
 * Read the number of bytes specified in %D6 to the buffer pointed to by %A2
 *----------------------------------------------------------------------------------------------------
 readSector:         MOVE.B    #REG_DATA,I8255_PORT_C                  | REG register address
-
                     OR.B      #LINE_READ,I8255_PORT_C                 | 08H+40H, Pulse RD line
 
                     MOVE.B    I8255_PORT_A,(%A2)+                     | Read the lower byte first 
@@ -224,16 +223,17 @@ readSector:         MOVE.B    #REG_DATA,I8255_PORT_C                  | REG regi
 
                     MOVE.B    #REG_DATA,I8255_PORT_C                  | Deassert RD line
                     SUBQ.W    #0x2,%D6
-                    BEQ       1f
+                    BEQ       2f
+
                     BRA       readSector
 
-1:                  MOVE.B    #REG_STATUS,%D5
+2:                  MOVE.B    #REG_STATUS,%D5
                     BSR       read8255PortA                           | Returns status in D4
                     MOVE.B    %D4,%D1
                     AND.B     #0x1,%D1
-                    BEQ       5f
+                    BEQ       3f
                     BSR       showErrors                              | If error display status
-5:                  RTS
+3:                  RTS
 
 
 *----------------------------------------------------------------------------------------------------
