@@ -61,7 +61,7 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                   : Decrement LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs                : Display the registers", 0
                     CMD_TABLE_ENTRY "scmd", "sc", serialCmdCmd, "scmd <[A|B]> Reg Val: Send Val to register Reg for port A, B", 0
-*                    CMD_TABLE_ENTRY "sin", "sn", serialInCmd, "sin <[A|B|U]>       : Input from Serial port A, B or USB to console", 0
+                    CMD_TABLE_ENTRY "sin", "sn", serialInCmd, "sin <[A|B|U]>       : Input from Serial port A, B or USB to console", 0
                     CMD_TABLE_ENTRY "sinit", "si", serialInitCmd, "sinit <[A|B]>       : Initialise serial port A or B", 0
                     CMD_TABLE_ENTRY "sloop", "sl", serialLoopCmd, "sloop <[A|B|U]>     : Loopback serial port A, B or USB", 0
                     CMD_TABLE_ENTRY "sout", "so", serialOutCmd, "sout <[A|B|U]>      : Console out to serial port A, B or USB", 0

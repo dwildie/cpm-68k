@@ -272,7 +272,21 @@ serOutUSB:          BSR       readCh                                  | Read a c
 * ----------------------------------------------------------------------------------
 * Input from the configured serial port
 * ----------------------------------------------------------------------------------
-serIn:              RTS
+serIn:              BSR       getch                                   | Wait for and read a character
+                    CMPI.B    #ESC,%D0                                | If it is an Escape char, exit
+                    BEQ       2f
+
+                    BSR       writeCh                                 | Display it on the console
+
+                    CMPI.B    #CR,%D0
+                    BNE       serIn
+
+                    MOVE.B    #LF,%D0                                 | Output a line feed char for every carriage return
+                    BSR       writeCh                                 | Display it on the console
+
+                    BRA       serIn                                   | Do it again
+2:                  RTS
+
 
 * ----------------------------------------------------------------------------------
 * Output to the configured serial port
