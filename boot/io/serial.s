@@ -447,8 +447,8 @@ initCmds:           dc.b      0x04, 0x44                              | WR4:  X1
                     dc.b      0x0D, 0x00                              | WR13: High byte for Baud
                     dc.b      0x0E, 0x01                              | WR14: Use 4.9152 MHz Clock, enable BRG
                     dc.b      0x01, 0x12                              | WR1:  Enable Tx int, enable Rx int on all chars
-                    dc.b      0x03, 0xC1                              | WR3:  Enable Rx, 8 bits, RTS/CTS/DCD auto enabled 
-                    dc.b      0x05, 0xEA                              | WR5:  Enable TX, 8 bits, assert DTR & CTS
+                    dc.b      0x03, 0xC1                              | WR3:  Enable Rx, 8 bits 
+                    dc.b      0x05, 0xEA                              | WR5:  Enable TX, 8 bits, assert DTR & RTS
 initCmdsEnd:
 
 initCmdLen          =         initCmdsEnd - initCmds
