@@ -38,6 +38,13 @@ setVectors:         MOVE.L    #busError,VECTOR_BUS_ERR
                     MOVE.L    #irq7,VECTOR_IRQ_7
 
                     MOVE.L    #biosHandler,VECTOR_TRAP
+
+                    MOVE.W    #UDV_FIRST,%A0
+1:                  MOVE.L    #irqDummy,(%A0)
+                    ADD.W     #4,%A0
+                    CMP.W     #UDV_LAST,%A0
+                    BLE       1b
+
                     RTS
 
 *-----------------------------------------------------------------------------------------------------
@@ -85,9 +92,10 @@ trace:              PUTS      strTrace
                     RTE
 
 *-----------------------------------------------------------------------------------------------------
-* Interrupt 1, S100 V5
+* Interrupt 1, S100 V5 - Cromemco boards
 *-----------------------------------------------------------------------------------------------------
 irq1:               MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+                    BSR       tuart_a_status
                     MOVE.L    #0x1, %D2
                     BRA       irqHandler
 
@@ -99,7 +107,7 @@ irq2:               MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
                     BRA       irqHandler
 
 *-----------------------------------------------------------------------------------------------------
-* Interrupt 3, S100 V3
+* Interrupt 3, S100 V3 - Serial I/O Timer
 *-----------------------------------------------------------------------------------------------------
 irq3:               MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
                     MOVE.L    #0x3, %D2
@@ -108,12 +116,12 @@ irq3:               MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
 *-----------------------------------------------------------------------------------------------------
 * Interrupt 4, S100 V2
 *-----------------------------------------------------------------------------------------------------
-irq4:               PUTS      strInterruptRecvd
+irq4:               MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
                     MOVE.L    #0x4, %D2
                     BRA       irqHandler
 
 *-----------------------------------------------------------------------------------------------------
-* Interrupt 5, S100 V1
+* Interrupt 5, S100 V1 - Serial I/O UART
 *-----------------------------------------------------------------------------------------------------
 irq5:               MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
                     MOVE.L    #0x5, %D2
@@ -209,6 +217,38 @@ irqHandler:         LEA       counts,%A0
                     RTE
 
 *-----------------------------------------------------------------------------------------------------
+* Interrupt 1, S100 V5 - Cromemco boards
+*-----------------------------------------------------------------------------------------------------
+irqUDV1:            MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+                    PUTS      strUDV1
+                    BSR       tuart_a_status
+                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    RTE
+
+irqUDV2:            MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+                    PUTS      strUDV2
+                    BSR       tuart_a_status
+                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    RTE
+
+irqUDV3:            MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+                    PUTS      strUDV3
+                    BSR       tuart_a_status
+                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    RTE
+
+irqUDV4:            MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+                    PUTS      strUDV4
+                    BSR       tuart_a_status
+                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    RTE
+
+irqDummy:           MOVEM.L   %D0-%D7/%A0-%A7,-(%SP)
+                    BSR       tuart_a_status
+                    MOVEM.L   (%SP)+,%D0-%D7/%A0-%A7
+                    RTE
+
+*-----------------------------------------------------------------------------------------------------
 * Set the IRQ mask to the value in D0
 *-----------------------------------------------------------------------------------------------------
 setIrqMask:         AND       #0x7,%D0                                | 3 least significant bits
@@ -298,4 +338,10 @@ strUnexpectedError: .asciz    "\r\nUnexpected exception, press any key to contin
 strTrace:           .asciz    "\r\nTrace:\r\n"
 strInterruptRecvd:  .asciz    "\r\nInterrupt received "
 strIrqCounts:       .asciz    "\r\nInterrupt counts:\r\n"
+strUDV1:            .asciz    "\r\nUDV1\r\n"
+strUDV2:            .asciz    "\r\nUDV2\r\n"
+strUDV3:            .asciz    "\r\nUDV3\r\n"
+strUDV4:            .asciz    "\r\nUDV4\r\n"
+
+
 

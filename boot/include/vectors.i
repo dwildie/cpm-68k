@@ -17,3 +17,5 @@ VECTOR_IRQ_7        =         0x7C
 
 VECTOR_TRAP         =         0xBC                                    | TRAP 15
 
+UDV_FIRST           =         0x100
+UDV_LAST            =         0x3FC
