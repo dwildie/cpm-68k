@@ -7,7 +7,6 @@
                     .global   cromixBootLoader
 
 
-LOAD_ADDRESS        =         0xFE0000
 BOOT_SECTORS        =         DEF_DD_BOOT_TRACKS * DEF_DD_SEC_TRK
 
 *-----------------------------------------------------------------------------------------------------
@@ -116,7 +115,7 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
                     BSR       newLine
                     BRA       5f
 
-7:                  MOVE.L    #LOAD_ADDRESS,-(%SP)                    | Param - buffer address
+7:                  MOVE.L    #__buffer__,-(%SP)                    | Param - buffer address
                     MOVE.L    #BOOT_SECTORS,%D0                       | Number of CP/M sectors in the boot tracks
                     LSL.L     #SECT_CPM_BYTE_SHIFT,%D0                | Convert to bytes
                     MOVE.L    %D0,-(%SP)                              | Param - byte count
@@ -146,11 +145,11 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
 
 4:                  MOVE.L    #BOOT_SECTORS,%D0                       | Number of CP/M sectors in the boot tracks
                     LSR.L     #SECT_HDD_CPM_SHIFT,%D0                 | Convert to HDD sectors
-                    MOVE.L    #LOAD_ADDRESS,%A2                       | Load address
+                    MOVE.L    #__buffer__,%A2                       | Load address
                     BSR       readSectors                             | Read the blocks
                     BNE       5f                                      | Error?
 
-6:                  MOVE.L    #LOAD_ADDRESS,%A0
+6:                  MOVE.L    #__buffer__,%A0
                     JMP       (%A0)                                   | Good luck
 
 5:                  UNLK      %FP

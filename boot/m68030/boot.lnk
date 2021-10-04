@@ -2,6 +2,7 @@ OUTPUT_FORMAT(srec)
 
 MEMORY
 {
+    buff  : ORIGIN = 0x00FE0000, LENGTH = 0x10000
     ram   : ORIGIN = 0x00FD0000, LENGTH = 0x10000
     rom   : ORIGIN = 0x00FC0000, LENGTH = 0x10000
     ports : ORIGIN = 0xFFFF0000, LENGTH = 0xFFFF
@@ -14,6 +15,7 @@ SECTIONS
   __stack_size__  = 0x4000;
   __rom_end__     = ORIGIN(rom) + LENGTH(rom) - 1;
   __ram_end__     = ORIGIN(ram) + LENGTH(ram) - 1;
+  __buffer__      = ORIGIN(buff);
   __ports_start__ = ORIGIN(ports);
     
   .ports.ide : { } > ide
