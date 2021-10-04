@@ -5,7 +5,7 @@
 
 lineBufferLen       =         60
 maxTokens           =         4
-                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd,readPortCmd,writePortCmd,bootCromixCmd,serialCmdCmd,serialInCmd,serialLoopCmd
+                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd,readPortCmd,writePortCmd,bootCromixCmd,serialCmdCmd,serialInCmd,serialLoopCmd,tuartStatusCmd,ottmsCmd,ottmdCmd
 *---------------------------------------------------------------------------------------------------------
                     .bss
                     .align(2)
@@ -54,6 +54,10 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "u", "u", memNextCmd, "u                   : Read the next memory block", 0
                     CMD_TABLE_ENTRY "i", "i", memPrevCmd, "i                   : Read the previous memory block", 0
                     CMD_TABLE_ENTRY "part", "p", partitionCmd, "part <partId>       : Select partition <partId>", 0
+                    CMD_TABLE_ENTRY "ottmr", "or", ottmrCmd, "ottmr <addr>        : Read 32 bit value from <addr>", 0
+                    CMD_TABLE_ENTRY "ottmw", "ow", ottmwCmd, "ottmw <addr> <value>: Write 32 bit <value> to <addr>", 0
+                    CMD_TABLE_ENTRY "ottms", "os", ottmsCmd, "ottms <bank>        : Set 16 32 bit values to <addr>", 0
+                    CMD_TABLE_ENTRY "ottmd", "od", ottmdCmd, "ottmd <bank>        : Display 16 32 bit values from <addr>", 0
                     CMD_TABLE_ENTRY "pin", "pi", readPortCmd, "pin <port>          : Read from portNo", 0
                     CMD_TABLE_ENTRY "pout", "po", writePortCmd, "pout <port> <byte>  : Write byte to portNo", 0
                     CMD_TABLE_ENTRY "read", "r", readCmd, "read <lba>          : Read and display the drive sector at <lba>", 0
@@ -75,6 +79,8 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "testd", "td", testDWordCmd, "testd <addr> <len>  : Memory test <len> double words starting at <addr>", 0
                     CMD_TABLE_ENTRY "testf", "tf", testDWordFCmd, "testf <addr> <len>  : Memory fast test <len> double words starting at <addr>", 0
           .endif
+                    CMD_TABLE_ENTRY "ts", "ts", tuartStatusCmd, "ts <A|B>            : Display TU-ART port A or B status", 0
+                    CMD_TABLE_ENTRY "ti", "ti", tuartInitCmd, "ti                  : Initialise TU-ART ports", 0
                     CMD_TABLE_ENTRY "w0", "w0", ideWait0Cmd, "w0                  : Set the IDE wait 0 parameter", 1
                     CMD_TABLE_ENTRY "w1", "w1", ideWait1Cmd, "w1                  : Set the IDE wait 1 parameter", 1
                     CMD_TABLE_ENTRY "w2", "w2", ideWait2Cmd, "w2                  : Set the IDE wait 2 parameter", 1
@@ -194,14 +200,24 @@ unknownCmd:         PUTS      strUnknownCommand
 *---------------------------------------------------------------------------------------------------------
 * Select drive A
 *---------------------------------------------------------------------------------------------------------
-driveACmd:          BSR       selectDriveA
-                    RTS
+driveACmd:          MOVEM.L   %A0/%D0,-(%SP)                          | Save the command pointer, and arg count
+                    BSR       selectDriveA                            | Select drive A
+                    MOVEM.L   (%SP)+,%A0/%D0                          | Restore the command pointer, and arg count
+                    CMPI.B    #2,%D0                                  | Check if a partition has been specified
+                    BLT       1f                                      | No, so exit
+                    BRA       pCmd                                    | Yes, select the parition
+1:                  RTS
 
 *---------------------------------------------------------------------------------------------------------
 * Select drive B
 *---------------------------------------------------------------------------------------------------------
-driveBCmd:          BSR       selectDriveB
-                    RTS
+driveBCmd:          MOVEM.L   %A0/%D0,-(%SP)                          | Save the command pointer, and arg count     
+                    BSR       selectDriveB                            | Select drive B
+                    MOVEM.L   (%SP)+,%A0/%D0                          | Restore the command pointer, and arg count
+                    CMPI.B    #2,%D0                                  | Check if a partition has been specified
+                    BLT       1f                                      | No, so exit
+                    BRA       pCmd                                    | Yes, select the parition
+1:                  RTS
 
 *---------------------------------------------------------------------------------------------------------
 * Select the partition
@@ -209,7 +225,7 @@ driveBCmd:          BSR       selectDriveB
 partitionCmd:       CMPI.B    #2,%D0                                  | Needs at least two args
                     BLT       wrongArgs
 
-                    MOVE.L    %A0,%A1                                 | Use %A1 as the arg base pointer
+pCmd:               MOVE.L    %A0,%A1                                 | Use %A1 as the arg base pointer
 
                     MOVE.L    4(%A1),%A0                              | arg[1], partitionId value
                     MOVE.B    (%A0),%D0
@@ -645,6 +661,199 @@ memPrevCmd:         MOVE.L    dumpAddr,%A0
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
+* OTT read memory command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+ottmrCmd:           CMPI.B    #2,%D0                                  | Needs one or two args
+                    BEQ       1f
+
+                    CMPI.B    #1,%D0                                  | Needs one arg to read at default address
+                    BNE       wrongArgs
+
+                    MOVE.L    #0x10000000,%D0
+                    BRA       2f
+
+1:                  MOVE.L    %A0,%A1                                 | Use A1
+                    MOVE.L    4(%A1),%A0                              | arg[1], memory address
+                    BSR       asciiToLong
+
+2:                  PUTS      strReadAddr
+                    BSR       writeHexLong
+                    PUTS      strEqualsHex
+
+                    MOVE.L    %D0,%A0
+                    MOVE.L    (%A0),%D0
+
+                    BSR       writeHexLong
+                    BSR       newLine
+2:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* OTT write memory command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+ottmwCmd:           CMPI.B    #3,%D0                                  | Needs two or three args
+                    BEQ       1f
+
+                    CMPI.B    #2,%D0                                  | Needs one arg to read at default address
+                    BNE       wrongArgs
+
+                    MOVE.L    #0x10000000,%D0
+                    BRA       2f
+
+1:                  MOVE.L    %A0,%A1                                 | Use A1
+                    MOVE.L    4(%A1),%A0                              | arg[1], memory address
+                    BSR       asciiToLong
+
+2:                  PUTS      strWriteAddr
+                    BSR       writeHexLong
+                    PUTS      strEqualsHex
+
+                    MOVE.L    %D0,%A2
+
+                    MOVE.L    8(%A1),%A0                              | arg[2], value to write
+                    BSR       asciiToLong
+                    BSR       writeHexLong
+                    BSR       newLine
+
+                    MOVE.L    %D0,(%A2)
+
+2:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* OTT set memory command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+ottmsCmd:           CMPI.B    #2,%D0                                  | Needs one or two args
+                    BEQ       1f
+
+                    CMPI.B    #1,%D0                                  | Needs one arg to read at default address
+                    BNE       wrongArgs
+
+                    MOVE.L    #0,%D0
+                    BRA       2f
+
+1:                  MOVE.L    %A0,%A1                                 | Use A1
+                    MOVE.L    4(%A1),%A0                              | arg[1], memory address
+                    BSR       asciiToLong
+
+2:                  CMPI.B    #0,%D0
+                    BNE       3f
+                    MOVE.L    #0x10000000,%A2
+                    BRA       7f
+
+3:                  CMPI.B    #1,%D0
+                    BNE       4f
+                    MOVE.L    #0x14000000,%A2
+                    BRA       7f
+
+4:                  CMPI.B    #2,%D0
+                    BNE       5f
+                    MOVE.L    #0x18000000,%A2
+                    BRA       7f
+
+5:                  CMPI.B    #3,%D0
+                    BNE       6f
+                    MOVE.L    #0x1c000000,%A2
+                    BRA       7f
+
+6:                  BRA       wrongArgs
+
+7:                  PUTS      strWriteAddr
+                    MOVE.L    %A2,%D0
+                    BSR       writeHexLong
+
+                    MOVE.L    #0x00000000,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0x11111111,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0x22222222,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0x33333333,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0x44444444,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0x55555555,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0x66666666,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0x77777777,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0x88888888,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0x99999999,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0xAAAAAAAA,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0xBBBBBBBB,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0xCCCCCCCC,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0xDDDDDDDD,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0xEEEEEEEE,(%A2)
+                    ADD.L     #4,%A2
+                    MOVE.L    #0xFFFFFFFF,(%A2)
+
+                    BSR       newLine
+
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* OTT display memory command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+ottmdCmd:           CMPI.B    #2,%D0                                  | Needs two or three args
+                    BEQ       1f
+
+                    CMPI.B    #1,%D0                                  | Needs one arg to read at default address
+                    BNE       wrongArgs
+
+                    MOVE.L    #0x10000000,%D0
+                    BRA       5f
+
+1:                  MOVE.L    %A0,%A1                                 | Use A1
+                    MOVE.L    4(%A1),%A0                              | arg[1], memory address
+                    BSR       asciiToLong
+
+                    CMPI.B    #0,%D0
+                    BNE       2f
+                    MOVE.L    #0x10000000,%D0
+                    BRA       5f
+
+2:                  CMPI.B    #1,%D0
+                    BNE       2f
+                    MOVE.L    #0x14000000,%D0
+                    BRA       5f
+
+2:                  CMPI.B    #2,%D0
+                    BNE       3f
+                    MOVE.L    #0x18000000,%D0
+                    BRA       5f
+
+3:                  CMPI.B    #3,%D0
+                    BNE       4f
+                    MOVE.L    #0x1c000000,%D0
+                    BRA       5f
+
+4:                  BRA       wrongArgs
+
+5:                  MOVE.L    %D0,%A2
+                    MOVE.L    #0,%D1
+
+6:                  PUTS      strReadAddr
+                    BSR       writeHexLong
+                    PUTS      strEqualsHex
+                    MOVE.L    (%A2),%D0
+                    BSR       writeHexLong
+
+                    ADD.L     #4,%A2
+                    MOVE.L    %A2,%D0
+                    ADDI.L    #4,%D1
+                    CMP.L     #0x40,%D1
+                    BLT       6b
+
+                    BSR       newLine
+
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
 * Display or set the IRQ mask
 *---------------------------------------------------------------------------------------------------------
 irqMaskCmd:         CMPI.B    #2,%D0                                  | Needs two args to set mask
@@ -868,6 +1077,36 @@ serialInitCmd:      CMPI.B    #2,%D0                                  | Needs tw
 * Reset both serial ports
 *---------------------------------------------------------------------------------------------------------
 serialResetCmd:     BSR       serReset
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Display the status of the TU-ART port a
+*---------------------------------------------------------------------------------------------------------
+tuartStatusCmd:     CMPI.B    #2,%D0                                  | Needs two args
+                    BNE       wrongArgs
+
+1:                  MOVE.L    4(%A0),%A0                              | arg[1], serial port A or B
+                    MOVE.B    (%A0),%D1                               | Get first character
+                    BSR       toUpperChar
+
+                    CMPI.B    #DEV_SER_A,%D1
+                    BNE       2f
+                    BSR       newLine
+                    BSR       tuart_a_status
+                    BRA       3f
+
+2:                  CMPI.B    #DEV_SER_B,%D1
+                    BNE       wrongArgs
+                    BSR       newLine
+                    BSR       tuart_b_status
+
+3:                  RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Initialise TU-ART ports
+*---------------------------------------------------------------------------------------------------------
+tuartInitCmd:       BSR       newLine
+                    BSR       tuart_init
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
@@ -1289,6 +1528,8 @@ strEqualsHex:       .asciz    " = 0x"
 strCromixSys:       .asciz    "cromix.sys"
 strBootingCromix:   .asciz    "\r\nBooting cromix ...\r\n"
 strNoFile:          .asciz    "\r\nFile not found\r\n"
+strReadAddr:        .asciz    "\r\nRead from address 0x"
+strWriteAddr:       .asciz    "\r\nWrite to address  0x"
 
           .ifdef              IS_68030
 strStackErr1:       .asciz    "Stack error, expected 0x"

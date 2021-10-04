@@ -38,6 +38,7 @@ stringcmp:          MOVEM.L   %A0-%A1,-(%SP)
 
 *---------------------------------------------------------------------------------------------------------
 * Split the input string, %A0 length %D0.B, into an array of tokens at %A1 length %D1.B
+* String is split on occurances of ' ' & ':' characters
 * Return the token count in %D0.B
 *---------------------------------------------------------------------------------------------------------
 split:              MOVEM.L   %A0-%A1/%D2-%D5,-(%SP)
@@ -52,7 +53,9 @@ split:              MOVEM.L   %A0-%A1/%D2-%D5,-(%SP)
                     BLE       4f
 
                     MOVE.B    (%A0,%D2),%D5                           | Get next input char
-                    CMPI.B    #' ', %D5
+                    CMPI.B    #' ',%D5
+                    BEQ       3f
+                    CMPI.B    #':',%D5
                     BEQ       3f
 
                     TST.B     %D4                                     | Not a space, check if in token
