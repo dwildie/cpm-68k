@@ -51,7 +51,7 @@ OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(IO_AS_OBJ) $(IO
 # --------------------------------------------------------------------------------
 # Dependencies
 # --------------------------------------------------------------------------------
-all: target/boot30.srec target/boot30-ss1.srec
+all: target/boot30-16mb.srec target/boot30-4mb.srec target/boot30-ss1.srec
 
 obj/bios/%.o:	../bios/%.s | obj/bios
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
@@ -82,15 +82,31 @@ obj/s-record/%.o:	../s-record/%.s | obj/s-record
 obj/main.o: ../main.s | obj
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
-obj/boot30.srec: boot.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS))
-	$(LD) $(LDFLAGS) -T boot.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
+# --------------------------------------------------------------------------------
+# Propellor console - 16MB
+# --------------------------------------------------------------------------------
+obj/boot30-16mb.srec: boot-16mb.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS))
+	$(LD) $(LDFLAGS) -T boot-16mb.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
 
-target/boot30.srec: obj/boot30.srec | target
+target/boot30-16mb.srec: obj/boot30-16mb.srec | target
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 Boot Loader" -o $@
 	srec_info $@
 
-obj/boot30-ss1.srec: boot.lnk obj/main.o $(filter-out obj/io/propellor.o, $(OBS))
-	$(LD) $(LDFLAGS) -T boot.lnk obj/main.o $(filter-out obj/io/propellor.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
+# --------------------------------------------------------------------------------
+# Propellor console - 4MB
+# --------------------------------------------------------------------------------
+obj/boot30-4mb.srec: boot-4mb.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS))
+	$(LD) $(LDFLAGS) -T boot-4mb.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
+
+target/boot30-4mb.srec: obj/boot30-4mb.srec | target
+	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 Boot Loader" -o $@
+	srec_info $@
+
+# --------------------------------------------------------------------------------
+# SS1 console - 16MB
+# --------------------------------------------------------------------------------
+obj/boot30-ss1.srec: boot-16mb.lnk obj/main.o $(filter-out obj/io/propellor.o, $(OBS))
+	$(LD) $(LDFLAGS) -T boot-16mb.lnk obj/main.o $(filter-out obj/io/propellor.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
 
 target/boot30-ss1.srec: obj/boot30-ss1.srec | target
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 Boot Loader - CompuPro SS1" -o $@
