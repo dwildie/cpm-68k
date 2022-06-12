@@ -1,7 +1,7 @@
 #!/bin/bash
 
 usage() {
-  echo "Usage: $0 <image_file> <partions>"
+  echo "Usage: $0 <image_file> <partitions>"
 }
 
 if [ $# -ne 2 ]; then
