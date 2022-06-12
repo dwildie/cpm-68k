@@ -56,8 +56,9 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "part", "p", partitionCmd, "part <partId>       : Select partition <partId>", 0
                     CMD_TABLE_ENTRY "ottmr", "or", ottmrCmd, "ottmr <addr>        : Read 32 bit value from <addr>", 0
                     CMD_TABLE_ENTRY "ottmw", "ow", ottmwCmd, "ottmw <addr> <value>: Write 32 bit <value> to <addr>", 0
-                    CMD_TABLE_ENTRY "ottms", "os", ottmsCmd, "ottms <bank>        : Set 16 32 bit values to <addr>", 0
-                    CMD_TABLE_ENTRY "ottmd", "od", ottmdCmd, "ottmd <bank>        : Display 16 32 bit values from <addr>", 0
+                    CMD_TABLE_ENTRY "ottms", "os", ottmsCmd, "ottms <bank>        : Set 16 32 bit values to <bank>", 0
+                    CMD_TABLE_ENTRY "ottmd", "od", ottmdCmd, "ottmd <bank>        : Display 16 32 bit values from <bank>", 0
+                    CMD_TABLE_ENTRY "ottmt", "ot", ottmtCmd, "ottmt <bank>        : Test <bank>", 0
                     CMD_TABLE_ENTRY "pin", "pi", readPortCmd, "pin <port>          : Read from portNo", 0
                     CMD_TABLE_ENTRY "pout", "po", writePortCmd, "pout <port> <byte>  : Write byte to portNo", 0
                     CMD_TABLE_ENTRY "read", "r", readCmd, "read <lba>          : Read and display the drive sector at <lba>", 0
@@ -661,7 +662,7 @@ memPrevCmd:         MOVE.L    dumpAddr,%A0
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
-* OTT read memory command: %D0 contains the number of entered command args, %A0 the start of the arg array
+* OTT memory read command: %D0 contains the number of entered command args, %A0 the start of the arg array
 *---------------------------------------------------------------------------------------------------------
 ottmrCmd:           CMPI.B    #2,%D0                                  | Needs one or two args
                     BEQ       1f
@@ -688,9 +689,11 @@ ottmrCmd:           CMPI.B    #2,%D0                                  | Needs on
 2:                  RTS
 
 *---------------------------------------------------------------------------------------------------------
-* OTT write memory command: %D0 contains the number of entered command args, %A0 the start of the arg array
+* OTT memory write command: %D0 contains the number of entered command args, %A0 the start of the arg array
 *---------------------------------------------------------------------------------------------------------
-ottmwCmd:           CMPI.B    #3,%D0                                  | Needs two or three args
+ottmwCmd:           MOVE.L    %A0,%A1                                 | Use A1
+
+                    CMPI.B    #3,%D0                                  | Needs two or three args
                     BEQ       1f
 
                     CMPI.B    #2,%D0                                  | Needs one arg to read at default address
@@ -699,8 +702,7 @@ ottmwCmd:           CMPI.B    #3,%D0                                  | Needs tw
                     MOVE.L    #0x10000000,%D0
                     BRA       2f
 
-1:                  MOVE.L    %A0,%A1                                 | Use A1
-                    MOVE.L    4(%A1),%A0                              | arg[1], memory address
+1:                  MOVE.L    4(%A1),%A0                              | arg[1], memory address
                     BSR       asciiToLong
 
 2:                  PUTS      strWriteAddr
@@ -719,12 +721,114 @@ ottmwCmd:           CMPI.B    #3,%D0                                  | Needs tw
 2:                  RTS
 
 *---------------------------------------------------------------------------------------------------------
-* OTT set memory command: %D0 contains the number of entered command args, %A0 the start of the arg array
+* OTT memory test command: %D0 contains the number of entered command args, %A0 the start of the arg array
+*---------------------------------------------------------------------------------------------------------
+ottmtCmd:           MOVE.L    %A0,%A1                                 | Use A1
+
+                    CMPI.B    #2,%D0                                  | Needs one or two args
+                    BEQ       1f
+
+                    CMPI.B    #1,%D0                                  | Needs one arg to write at default address
+                    BNE       wrongArgs
+
+                    MOVE.L    #0,%D0
+                    BRA       2f
+
+1:                  MOVE.L    4(%A1),%A0                              | arg[1], memory address
+                    BSR       asciiToLong
+
+2:                  CMPI.B    #0,%D0
+                    BNE       3f
+                    MOVE.L    #0x10000000,%A2
+                    BRA       7f
+
+3:                  CMPI.B    #1,%D0
+                    BNE       4f
+                    MOVE.L    #0x14000000,%A2
+                    BRA       7f
+
+4:                  CMPI.B    #2,%D0
+                    BNE       5f
+                    MOVE.L    #0x18000000,%A2
+                    BRA       7f
+
+5:                  CMPI.B    #3,%D0
+                    BNE       6f
+                    MOVE.L    #0x1c000000,%A2
+                    BRA       7f
+
+6:                  BRA       wrongArgs
+
+7:                  PUTS      strTestAddr
+                    MOVE.L    %A2,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+
+                    MOVE.L    #0,%D6
+                    MOVE.L    #0,%D5
+                    MOVE.L    #0,%D4
+
+8:                  MOVE.L    %D4,%D0
+*                    MOVE.B    %D4,%D0                                 | Copy test byte to each of the four bytes
+*                    ROL.W     #8,%D0
+*                    MOVE.B    %D4,%D0
+*                    SWAP      %D0
+*                    MOVE.B    %D4,%D0
+*                    ROL.W     #8,%D0
+*                    MOVE.B    %D4,%D0
+
+                    MOVE.L    %D0,(%A2)                               | Write to address
+                    MOVE.L    (%A2),%D1                               | Read from address
+                    CMP.L     %D0,%D1
+                    BEQ       9f
+                                                                      | Failed
+                    MOVE.L    0xFCFC0000,%D2                          | FPGA analyser trigger
+                    MOVE.L    (%A2),%D2                               | Read again
+
+                    ADDI.L    #1,%D5                                  | Increment error count
+                    BRA       11f
+
+9:                  ADDI.L    #1,%D6                                  | Increment correct count
+10:                 ADDI.L    #1,%D4                                  | Increment iteration count
+                    CMPI.L    #0,%D4                                  | If back to zero -> exit
+                    BNE       8b                                      | Continue
+
+11:                 MOVE.L    %D0,%D3                                 | Display expected value
+                    PUTS      strWrite
+                    MOVE.L    %D3,%D0
+                    BSR       writeHexLong
+
+                    PUTS      strRead1                                | Display first read value
+                    MOVE.L    %D1,%D0
+                    BSR       writeHexLong
+
+                    PUTS      strRead2                                | Display second read value
+                    MOVE.L    %D2,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+
+                    PUTS      strCorrect                              | Display correct count
+                    MOVE.L    %D6,%D0
+                    BSR       writeHexLong
+
+                    PUTS      strFails                                | Display error count
+                    MOVE.L    %D5,%D0
+                    BSR       writeHexLong
+                    BSR       newLine
+
+                    CMPI.L    #0x20,%D5                               | If max errors -> exit
+                    BNE       10b
+
+                    BSR       newLine
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* OTT memory set command: %D0 contains the number of entered command args, %A0 the start of the arg array
 *---------------------------------------------------------------------------------------------------------
 ottmsCmd:           CMPI.B    #2,%D0                                  | Needs one or two args
                     BEQ       1f
 
-                    CMPI.B    #1,%D0                                  | Needs one arg to read at default address
+                    CMPI.B    #1,%D0                                  | Needs one arg to write at default address
                     BNE       wrongArgs
 
                     MOVE.L    #0,%D0
@@ -760,44 +864,44 @@ ottmsCmd:           CMPI.B    #2,%D0                                  | Needs on
                     MOVE.L    %A2,%D0
                     BSR       writeHexLong
 
-                    MOVE.L    #0x00000000,(%A2)
+                    MOVE.L    #0x33221100,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0x11111111,(%A2)
+                    MOVE.L    #0x44332211,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0x22222222,(%A2)
+                    MOVE.L    #0x55443322,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0x33333333,(%A2)
+                    MOVE.L    #0x66554433,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0x44444444,(%A2)
+                    MOVE.L    #0x77665544,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0x55555555,(%A2)
+                    MOVE.L    #0x88776655,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0x66666666,(%A2)
+                    MOVE.L    #0x99887766,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0x77777777,(%A2)
+                    MOVE.L    #0xAA998877,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0x88888888,(%A2)
+                    MOVE.L    #0xBBAA9988,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0x99999999,(%A2)
+                    MOVE.L    #0xCCBBAA99,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0xAAAAAAAA,(%A2)
+                    MOVE.L    #0xDDCCBBAA,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0xBBBBBBBB,(%A2)
+                    MOVE.L    #0xEEDDCCBB,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0xCCCCCCCC,(%A2)
+                    MOVE.L    #0xFFEEDDCC,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0xDDDDDDDD,(%A2)
+                    MOVE.L    #0x00FFEEDD,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0xEEEEEEEE,(%A2)
+                    MOVE.L    #0x1100FFEE,(%A2)
                     ADD.L     #4,%A2
-                    MOVE.L    #0xFFFFFFFF,(%A2)
+                    MOVE.L    #0x221100FF,(%A2)
 
                     BSR       newLine
 
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
-* OTT display memory command: %D0 contains the number of entered command args, %A0 the start of the arg array
+* OTT memory display command: %D0 contains the number of entered command args, %A0 the start of the arg array
 *---------------------------------------------------------------------------------------------------------
 ottmdCmd:           CMPI.B    #2,%D0                                  | Needs two or three args
                     BEQ       1f
@@ -1530,6 +1634,12 @@ strBootingCromix:   .asciz    "\r\nBooting cromix ...\r\n"
 strNoFile:          .asciz    "\r\nFile not found\r\n"
 strReadAddr:        .asciz    "\r\nRead from address 0x"
 strWriteAddr:       .asciz    "\r\nWrite to address  0x"
+strTestAddr:        .asciz    "\r\nTest at address  0x"
+strCorrect:         .asciz    "Correct 0x"
+strFails:           .asciz    ", failed 0x"
+strWrite:           .asciz    "\r\nw 0x"
+strRead1:           .asciz    " r1 0x"
+strRead2:           .asciz    " r2 0x"
 
           .ifdef              IS_68030
 strStackErr1:       .asciz    "Stack error, expected 0x"
