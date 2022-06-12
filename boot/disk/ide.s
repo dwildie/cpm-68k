@@ -14,7 +14,7 @@ I8255_PORT_DRIVE:   ds.b      1                                       | port 34,
 delayZero:          .word     0x400
 delayOne:           .word     0x20
 delayTwo:           .word     0x200
-delayThree:         .word     0x400
+delayThree:         .word     0x800
                     .global   delayZero,delayOne,delayTwo,delayThree
 *-----------------------------------------------------------------------------------------------------
 
