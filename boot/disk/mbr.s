@@ -159,6 +159,8 @@ readMBR:            LINK      %FP,#0
                     ADD       #MBR_PRT_TBL_0,%A2                      | Offset to the MBR's first partition table entry
                     LEA       PT_ENTRIES(%A3),%A4                     | Offset to our first partition table entry
 
+                    MOVE.L    PT_SECTORS(%A3),%D1                     | Load the total disk sector count into D1
+                    
 1:                  MOVE.B    PRT_TYPE(%A2),%D2                       | Partition type
                     BEQ       6f                                      | 0x00 identifies an unused partition
                     MOVE.B    %D2,PE_TYPE(%A4)                        | Save in our table entry
