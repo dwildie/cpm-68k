@@ -1,0 +1,42 @@
+MEMORY
+{
+    ram   : ORIGIN = 0x00100000, LENGTH = 0x100000
+}
+
+SECTIONS
+{
+  
+  __ram_end     = ORIGIN(ram) + LENGTH(ram) - 1;
+    
+  .text : { *(.text*) } > ram
+  .rodata : { *(.rodata*) } > ram
+  
+  __text_end = .;
+  
+  .data : {
+    __data_start = .;
+    *(.data*)
+  } > ram 
+  
+  __data_end = .;
+  __data_size = __data_end - __data_start;
+  
+  .bss : { 
+    __bss_start = .;
+    *(.bss*) *(COMMON)
+    _end = .;
+    __bss_size = _end - __bss_start;
+    . = ALIGN(0x10);
+    _end = .; 
+  } > ram
+  
+  . += 1;
+  . = ALIGN (0x100);
+  __free_ram_start = .;
+  __free_ram_size = __ram_end - __free_ram_start;
+  
+  /DISCARD/ : {
+    *(.eh_frame);
+    *(.comment);
+  }
+}
