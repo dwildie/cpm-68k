@@ -12,7 +12,7 @@ typedef int entry_t(int arg, char **argv);
 #endif
 
 /*-----------------------------------------------------------------------------------------------------
- * Display the directory listing for the currently selected drive
+ * Load the ELF (Executable and Linkable Format) file into memory and execute
  * --------------------------------------------------------------------------------------------------*/
 uint32_t executeELF(int argc, char **argv) {
   DEBUGF("\r\nExecute:");
