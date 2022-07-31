@@ -5,7 +5,7 @@
                     .global   _start
                     .global   warmBoot
                     .global   initDataSegs
-                    .global   cmxTable
+                    .global   biosTable
 
 *---------------------------------------------------------------------------------------------------------
 * Setup the reset vectors, initial SSP, & PC.  These will appear at 0x000000 immediately afte a hardware reset
@@ -14,21 +14,36 @@
                     DC.L      _start
 
 *---------------------------------------------------------------------------------------------------------
-* Offset the start of the code
+* Offset to the start of the biosTable
 *---------------------------------------------------------------------------------------------------------
                     .org      0x00000010
 
 *---------------------------------------------------------------------------------------------------------
-* Jump table for cromix drivers to access console and disk functions
+* Jump table for hosted applications nd operating systems to access console and disk functions
 *---------------------------------------------------------------------------------------------------------
-cmxTable:           DC.L      cmxInitDrives
-                    DC.L      cmxGetDriveStatus
-                    DC.L      cmxReadDriveBlock
-                    DC.L      cmxWriteDriveBlock
-                    DC.L      cmxInitConsole
-                    DC.L      cmxOutChar
-                    DC.L      cmxInChar
+biosTable:          DC.L      biosInitDrives
+                    DC.L      biosGetDriveStatus
+                    DC.L      biosReadDriveBlock
+                    DC.L      biosWriteDriveBlock
+                    DC.L      biosInitConsole
+                    DC.L      biosOutChar
+                    DC.L      biosInChar
+                    DC.L      biosHasChar
 
+*---------------------------------------------------------------------------------------------------------
+* Offset to the start of the fatTable
+*---------------------------------------------------------------------------------------------------------
+                    .org      0x00000040
+
+*---------------------------------------------------------------------------------------------------------
+* Jump table for programs to access FAT disk functions
+*---------------------------------------------------------------------------------------------------------
+fatTable:           DC.L      fOpenFAT
+                    DC.L      fReadFAT
+                    DC.L      fWriteFAT
+                    DC.L      fCloseFAT
+
+                    .align(4)
 *---------------------------------------------------------------------------------------------------------
 * Entry point
 *---------------------------------------------------------------------------------------------------------
@@ -79,13 +94,14 @@ initDataSegs:       MOVEA.L   #__bss_start__, %A0                     | Zero bss
                     .align(2)
                     .global   strId1, strId2
           .ifdef              IS_68000
-strId1:             .asciz    "\n\rS100 68000 Boot Monitor V0.3.0.R12\n\r"
+strId1:             .asciz    "\n\rS100 68000"
           .endif
 
           .ifdef              IS_68030
-strId1:             .asciz    "\n\rS100 68030 Boot Monitor V0.3.0.R12\n\r"
+strId1:             .asciz    "\n\rS100 68030"
           .endif
-strId2:             .asciz    "Damian Wildie, 13/06/2022\r\n\r\n"
+strId2:             .asciz    " Boot Monitor V0.3.1.B1 __BUILD-DATE__, Damian Wildie\r\n\r\n"
+
 
 *---------------------------------------------------------------------------------------------------------
                     .data

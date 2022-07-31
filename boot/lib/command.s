@@ -5,7 +5,7 @@
 
 lineBufferLen       =         60
 maxTokens           =         4
-                    .global   memDumpCmd,memNextCmd,memPrevCmd,s,irqMaskCmd,readPortCmd,writePortCmd,bootCromixCmd,serialCmdCmd,serialInCmd,serialLoopCmd,tuartStatusCmd,ottmsCmd,ottmdCmd
+                    .global   runCmd
 *---------------------------------------------------------------------------------------------------------
                     .bss
                     .align(2)
@@ -33,7 +33,7 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "cdi", "cdi", enableDataCacheCmd, "cdi                 : Enable the data cache", 0
           .endif
                     CMD_TABLE_ENTRY "console", "con", setConsoleCmd, "console <[A|B|P|U]> : Set the console device", 0
-                    CMD_TABLE_ENTRY "boot", "b", bootCpmCmd, "boot <file>         : Load CP/M S-Record <file> into memory and execute", 0
+                    CMD_TABLE_ENTRY "cpm", "cpm", bootCpmCmd, "cpm                 : Boot CP/M-68K from the current drive", 0
           .ifdef              IS_68030
                     CMD_TABLE_ENTRY "cromix", "cmx", bootCromixCmd, "cromix <file>       : Load cromix.sys S-Record <file> into memory and execute", 0
           .endif
@@ -65,6 +65,7 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "readNext", ">", readNextCmd, ">                   : Increment LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                   : Decrement LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs                : Display the registers", 0
+                    CMD_TABLE_ENTRY "run", "ru", runCmd, "run <file>          : Load S-Record <file> into memory and run", 0
                     CMD_TABLE_ENTRY "scmd", "sc", serialCmdCmd, "scmd <[A|B]> Reg Val: Send Val to register Reg for port A, B", 0
                     CMD_TABLE_ENTRY "sin", "sn", serialInCmd, "sin <[A|B|U]>       : Input from Serial port A, B or USB to console", 0
                     CMD_TABLE_ENTRY "sinit", "si", serialInitCmd, "sinit <[A|B]>       : Initialise serial port A or B", 0
@@ -86,6 +87,7 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "w1", "w1", ideWait1Cmd, "w1                  : Set the IDE wait 1 parameter", 1
                     CMD_TABLE_ENTRY "w2", "w2", ideWait2Cmd, "w2                  : Set the IDE wait 2 parameter", 1
                     CMD_TABLE_ENTRY "w3", "w3", ideWait3Cmd, "w3                  : Set the IDE wait 3 parameter", 1
+                    CMD_TABLE_ENTRY "exec", "x", execCmd, "exec <file> <params>: Execute ELF <file>", 0
 
 cmdTableLength      =         . - cmdTable
 cmdEntryLength      =         0x12
@@ -495,30 +497,79 @@ bootCromixCmd:
 11:                 RTS
 
 *---------------------------------------------------------------------------------------------------------
+* Execute the arg[1] ELF file
+*---------------------------------------------------------------------------------------------------------
+execCmd:            CMPI.B    #2,%D0                                  | Needs at least two args
+                    BLT       wrongArgs
+
+                    LINK      %FP,#-8
+                    ADDQ.L    #4,%A0
+                    MOVE.L    %A0,-4(%FP)                             | Save argv
+                    SUBQ.L    #1,%D0
+                    MOVE.L    %D0,-8(%FP)                             | Save argc
+
+                    BSR       newLine
+
+                    MOVE.L    -4(%FP),-(%SP)                          | argv
+                    MOVE.L    -8(%FP),-(%SP)                          | argc
+                    BSR       fatInit
+                    BNE       1f                                      | Failed
+
+                    BSR       executeELF
+                    ADDQ.L    #4,%SP
+
+                    BSR       fatExit
+
+1:                  UNLK      %FP
+                    RTS
+
+*
+*---------------------------------------------------------------------------------------------------------
 * Load the arg[1] file into memory and execute
 *---------------------------------------------------------------------------------------------------------
-bootCpmCmd:         BSR       newLine
+runCmd:             CMPI.B    #2,%D0                                  | Needs at least two args
+                    BLT       wrongArgs
 
-                    CMPI.B    #2,%D0                                  | Is there a file specified
-                    BLT       loader                                  | No, try and read the boot loader from the system tracks
+                    LINK      %FP,#-8
+                    MOVE.L    %A0,-4(%FP)                             | Save argv
+                    MOVE.L    %D0,-8(%FP)                             | Save argc
+
+                    BSR       newLine
 
                     MOVE.L    4(%A0),-(%SP)
                     BSR       loadRecordFile                          | Will return start address in %D0
                     ADDQ.L    #4,%SP
 
-                    TST.B     %D0
+                    TST.L     %D0
+                    BEQ       2f                                      | Error already displayed
+                    CMPI.L    #1,%D0
                     BEQ       1f
 
-                    CMPI.B    #1,%D0
-                    BNE       1f                                      | Error already displayed
+                    MOVE.L    %D0,%A0                                 | Start execution address
 
-                    PUTS      strFileNotFound
-                    BRA       1f
+                    MOVE.L    -4(%FP),%A1
+                    ADDQ.L    #4,%A1
+                    MOVE.L    %A1,-(%SP)                              | argv
 
-loader:             BSR       cpmBootLoader                           | Call the CP/M boot loader
+                    MOVE.L    -8(%FP),%D0
+                    SUBQ.L    #1,%D0
+                    MOVE.L    %D0,-(%SP)                              | argc
 
+                    JSR       (%A0)                                   | Execute
+                    ADDQ.L    #8,%SP
+                    BRA       2f
+
+1:                  PUTS      strFileNotFound
+2:                  UNLK      %FP
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Boot CP/M from the current drive
+*---------------------------------------------------------------------------------------------------------
+bootCpmCmd:         BSR       newLine
+                    BSR       cpmBootLoader                           | Call the CP/M boot loader
                     PUTS      strBootLoaderError                      | Should never return
-1:                  RTS
+                    RTS
 
           .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------

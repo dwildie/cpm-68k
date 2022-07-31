@@ -2,7 +2,7 @@
 #include <string.h>
 #include "cromix-fs.h"
 
-extern int cmxReadDriveBlock(long driveId, long lba, unsigned char *buffer, long count);
+extern int biosReadDriveBlock(long driveId, long lba, unsigned char *buffer, long count);
 static int init(int driveId, int offset, int verbose);
 static int read_geometry(int driveId, int offset, int verbose);
 static int read_fs_block(unsigned int block, unsigned char *buffer);
@@ -287,13 +287,13 @@ static int read_dword(unsigned char *data, int offset)
 static int read_fs_block(unsigned int block_number, unsigned char *buffer)
 {
   unsigned int b = geometry.block_0 + block_number;
-  return cmxReadDriveBlock(geometry.drive_id, b, buffer, 1);
+  return biosReadDriveBlock(geometry.drive_id, b, buffer, 1);
 }
 
 static int read_geometry(int drive_id, int offset, int verbose)
 {
-//  printf("cmxReadDriveBlock 0x%x\r\n", offset);
-  cmxReadDriveBlock(drive_id, offset, block, 1);
+//  printf("biosReadDriveBlock 0x%x\r\n", offset);
+  biosReadDriveBlock(drive_id, offset, block, 1);
 
   geometry.drive_id         = drive_id;
   geometry.offset           = offset;

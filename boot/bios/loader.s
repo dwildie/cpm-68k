@@ -90,7 +90,7 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
                     BEQ       3f
 
                     PUTS      strUnsupportedType                      | Unsupported partition
-                    BRA       4f
+                    BRA       5f
 
                     /* FAT partition */
 1:                  MOVE.W    -2(%FP),-(%SP)                          | driveId
@@ -105,9 +105,10 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
                     BSR       mediaInit                               | Initialise the FAT32 library
                     ADD.L     #8,%SP
 
+                    PEA       strReadWrite                            | Read mode
                     PEA       strDriveA                               | Try and open the drive a image file
                     BSR       fOpenFAT                                | Open the file
-                    BEQ       7f                                      | Success
+                    BNE       7f                                      | Success
 
                     PUTS      strNoDriveA                             | Failed, display error message
                     LEA       strDriveA,%A2
@@ -115,7 +116,7 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
                     BSR       newLine
                     BRA       5f
 
-7:                  MOVE.L    #__buffer__,-(%SP)                    | Param - buffer address
+7:                  MOVE.L    #__buffer__,-(%SP)                      | Param - buffer address
                     MOVE.L    #BOOT_SECTORS,%D0                       | Number of CP/M sectors in the boot tracks
                     LSL.L     #SECT_CPM_BYTE_SHIFT,%D0                | Convert to bytes
                     MOVE.L    %D0,-(%SP)                              | Param - byte count
@@ -145,7 +146,7 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
 
 4:                  MOVE.L    #BOOT_SECTORS,%D0                       | Number of CP/M sectors in the boot tracks
                     LSR.L     #SECT_HDD_CPM_SHIFT,%D0                 | Convert to HDD sectors
-                    MOVE.L    #__buffer__,%A2                       | Load address
+                    MOVE.L    #__buffer__,%A2                         | Load address
                     BSR       readSectors                             | Read the blocks
                     BNE       5f                                      | Error?
 
@@ -161,5 +162,5 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
                     .global   strDriveA
 
 strNoDriveA:        .asciz    "\r\nCould not open "
-
+strReadWrite:       .asciz    "w+"
 

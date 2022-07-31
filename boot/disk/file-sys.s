@@ -11,11 +11,64 @@ F_PARTITION_OFFSET: ds.l      1
 
 *-----------------------------------------------------------------------------------------------------
                     .text
+                    .global   fatInit
+                    .global   fatExit
                     .global   listDirectory
                     .global   fOpen
                     .global   fRead
                     .global   fClose
                     .global   getFileSysType
+
+*-----------------------------------------------------------------------------------------------------
+* fatInit
+*-----------------------------------------------------------------------------------------------------
+fatInit:            LINK      %FP,#0
+                    MOVE.W    currentDrive,%D0                        | Get current drive
+                    MOVE.W    %D0,F_DRIVE_ID                          | Local driveId variable
+
+                    MOVE.W    %D0,-(%SP)                              | Get the filesystem type
+                    BSR       getFileSysType
+                    ADD.L     #2,%SP
+
+                    MOVE.W    %D0,F_FILESYS_TYPE
+
+                    CMPI.W    #FS_FAT,%D0                             | FAT
+                    BEQ       1f
+
+                    PUTS      strUnsupportedType                      | Unsupported partition
+                    MOVE.B    #1,%D0                                  | Return Error
+                    BRA       2f
+
+                    /* FAT Partition */
+1:                  MOVE.W    currentDrive,-(%SP)                     | driveId
+                    BSR       getPartitionId                          | Get the drive's current partition
+                    ADD       #2,%SP
+                    MOVE.W    %D0,F_PARTITION_ID
+
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)                              | Param - partitionId
+                    MOVE.W    currentDrive,%D0
+                    EXT.L     %D0
+                    MOVE.L    %D0,-(%SP)                              | Param driveId
+                    BSR       mediaInit                               | Initialise the FAT32 library
+                    ADD.L     #8,%SP
+                    MOVE.B    #0,%D0                                  | Return OK
+
+2:                  UNLK      %FP
+                    RTS
+
+*-----------------------------------------------------------------------------------------------------
+* fatInit
+*-----------------------------------------------------------------------------------------------------
+fatExit:            MOVE.W    F_FILESYS_TYPE,%D0
+
+                    CMPI.W    #FS_FAT,%D0                             | FAT
+                    BNE       1f
+
+                    /* FAT Partition */
+                    BSR       mediaClose                              | Close the FAT driver
+
+1:                  RTS
 
 *-----------------------------------------------------------------------------------------------------
 * fOpen(*fileName)
@@ -59,9 +112,14 @@ fOpen:              LINK      %FP,#0
                     BSR       mediaInit                               | Initialise the FAT32 library
                     ADD.L     #8,%SP
 
+                    PEA       strRead                                 | Read mode
                     MOVE.L    0x08(%FP),-(%SP)                        | Param: fileName
                     BSR       fOpenFAT                                | Open the file
                     ADD.L     #4,%SP
+                    BNE       5f
+                    MOVE.L    #1,%D0
+                    BRA       4f
+5:                  MOVE.L    #0,%D0
                     BRA       4f
 
                     /* CP/M Partition */
@@ -156,7 +214,7 @@ fClose:             MOVE.W    F_FILESYS_TYPE,%D0
 
                     /* FAT Partition */
 1:                  BSR       fCloseFAT                               | Close the file
-                    BSR       mediaClose                              | Close the FAT driver
+*                    BSR       mediaClose                              | Close the FAT driver
                     BRA       3f
 
                     /* CP/M Partition or raw CP/M file system */
@@ -320,5 +378,6 @@ getFileSysType:     LINK      %FP,#-2
 
                     .align(2)
 strRootDir:         .asciz    "/"
+strRead:            .asciz    "r"
 strUnsupportedType: .asciz    "\r\nUnsupported partition type\r\n"
 

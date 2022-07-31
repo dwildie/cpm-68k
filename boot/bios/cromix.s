@@ -2,18 +2,19 @@
                     .include  "include/disk.i"
 
                     .text
-                    .global   cmxInitDrives
-                    .global   cmxGetDriveStatus
-                    .global   cmxReadDriveBlock
-                    .global   cmxWriteDriveBlock
-                    .global   cmxInitConsole
-                    .global   cmxOutChar
-                    .global   cmxInChar
+                    .global   biosInitDrives
+                    .global   biosGetDriveStatus
+                    .global   biosReadDriveBlock
+                    .global   biosWriteDriveBlock
+                    .global   biosInitConsole
+                    .global   biosOutChar
+                    .global   biosInChar
+                    .global   biosHasChar
 
 *-----------------------------------------------------------------------------------------------------
 * Get the status of both drives
 *-----------------------------------------------------------------------------------------------------
-cmxInitDrives:      MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
+biosInitDrives:     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 
                     BSR       initDataSegs                            | Initialise the initialised data degment
                     BSR       ioInit                                  | Initialise the i/o subsystem
@@ -21,12 +22,12 @@ cmxInitDrives:      MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
                     BSR       initDrives                              | List the available drives
 
                     MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
-                    JMP       cmxGetDriveStatus
+                    JMP       biosGetDriveStatus
 
 *-----------------------------------------------------------------------------------------------------
 * Get the status of both drives
 *-----------------------------------------------------------------------------------------------------
-cmxGetDriveStatus:  MOVE.L    %D1,-(%SP)
+biosGetDriveStatus: MOVE.L    %D1,-(%SP)
 
                     CLR.L     %D0
                     MOVE.W    driveStatus,%D1
@@ -45,7 +46,7 @@ cmxGetDriveStatus:  MOVE.L    %D1,-(%SP)
 *-----------------------------------------------------------------------------------------------------
 * Read drive block (long drive, long lba, byte *buffer, long count)
 *-----------------------------------------------------------------------------------------------------
-cmxReadDriveBlock:  LINK      %FP,#0
+biosReadDriveBlock: LINK      %FP,#0
                     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 
                     MOVE.L    0x08(%FP),%D0                           | Param - drive
@@ -65,7 +66,7 @@ cmxReadDriveBlock:  LINK      %FP,#0
 *-----------------------------------------------------------------------------------------------------
 * Write drive block (long drive, long lba, byte *buffer, long count)
 *-----------------------------------------------------------------------------------------------------
-cmxWriteDriveBlock: LINK      %FP,#0
+biosWriteDriveBlock: LINK     %FP,#0
                     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 
                     MOVE.L    0x08(%FP),%D0                           | Param - drive
@@ -85,7 +86,7 @@ cmxWriteDriveBlock: LINK      %FP,#0
 *-----------------------------------------------------------------------------------------------------
 * Initialise the console
 *-----------------------------------------------------------------------------------------------------
-cmxInitConsole:     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
+biosInitConsole:    MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
                     BSR       ioInit
                     MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
                     RTS
@@ -93,9 +94,9 @@ cmxInitConsole:     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 *-----------------------------------------------------------------------------------------------------
 * Output a character to the current console device (unsigned long char)
 *-----------------------------------------------------------------------------------------------------
-cmxOutChar:         LINK      %FP,#0
+biosOutChar:        LINK      %FP,#0
                     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
-                    MOVE.L    0x08(%FP),%D1                           | Param - char
+                    MOVE.L    0x08(%FP),%D0                           | Param - char
                     BSR       outch
                     MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
                     UNLK      %FP
@@ -104,9 +105,21 @@ cmxOutChar:         LINK      %FP,#0
 *-----------------------------------------------------------------------------------------------------
 * Input a character from the current console device
 *-----------------------------------------------------------------------------------------------------
-cmxInChar:          MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
+biosInChar:         MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
                     MOVE.L    #0,%D0
                     BSR       inch
                     MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
                     RTS
 
+*-----------------------------------------------------------------------------------------------------
+* Return zero if a input char is available, otherwise non-zero
+*-----------------------------------------------------------------------------------------------------
+biosHasChar:        MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
+                    MOVE.L    #0,%D0
+                    BSR       keystat
+                    BEQ       1f
+                    MOVE.L    #0x0,%D0
+                    BRA       2f
+1:                  MOVE.L    #0x1,%D0
+2:                  MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
+                    RTS

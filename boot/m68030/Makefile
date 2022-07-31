@@ -8,8 +8,9 @@ CC       = m68k-elf-gcc
 CCFLAGS += -Wall
 CCFLAGS += -m68010
 #CCFLAGS += -ggdb
-CCFLAGS += -nostdlib
-CCFLAGS += -nodefaultlibs
+#CCFLAGS += -nostdlib
+#CCFLAGS += -nodefaultlibs
+CCFLAGS += -ffreestanding -v
 CCFLAGS += -I../include
 CCFLAGS += -I../../baselibc/include
 CCFLAGS += -I../../fat/include
@@ -43,10 +44,10 @@ IO_C_OBJ = $(patsubst ../io/%.c, obj/io/%.o, $(IO_C_SRC))
 LIB_AS_SRC = $(wildcard ../lib/*.s)
 LIB_AS_OBJ = $(patsubst ../lib/%.s, obj/lib/%.o, $(LIB_AS_SRC))
 
-SREC_AS_SRC = $(wildcard ../s-record/*.s)
-SREC_AS_OBJ = $(patsubst ../s-record/%.s, obj/s-record/%.o, $(SREC_AS_SRC))
+LIB_C_SRC = $(wildcard ../lib/*.c)
+LIB_C_OBJ = $(patsubst ../lib/%.c, obj/lib/%.o, $(LIB_C_SRC))
 
-OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(IO_AS_OBJ) $(IO_C_OBJ) $(DSK_AS_OBJ) $(DSK_C_OBJ) $(SREC_AS_OBJ) 
+OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(LIB_C_OBJ) $(IO_AS_OBJ) $(IO_C_OBJ) $(DSK_AS_OBJ) $(DSK_C_OBJ)
 
 # --------------------------------------------------------------------------------
 # Dependencies
@@ -73,14 +74,16 @@ obj/io/%.o:	../io/%.c | obj/io
 obj/lib/%.o:	../lib/%.s | obj/lib
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
-obj/s-record/%.o:	../s-record/%.s | obj/s-record
-	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
+obj/lib/%.o:	../lib/%.c | obj/lib
+	$(CC) $(CCFLAGS) -S -o $(@:.o=.s) $<
+	$(CC) $(CCFLAGS) -c -o $@ $<
 
 # --------------------------------------------------------------------------------
 # M68030 CPM Boot Loader
 # --------------------------------------------------------------------------------
 obj/main.o: ../main.s | obj
-	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
+	cat $< | sed "s/__BUILD-DATE__/$$(date '+%Y-%m-%d %H:%M:%S')/" > $(@:.o=.as)
+	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $(@:.o=.as)
 
 # --------------------------------------------------------------------------------
 # Propellor console - 16MB
@@ -128,9 +131,6 @@ obj/disk: obj
 	mkdir -p $@
 
 obj/lib: obj
-	mkdir -p $@
-
-obj/s-record: obj
 	mkdir -p $@
 
 obj/bios: obj

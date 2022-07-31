@@ -2,7 +2,7 @@
                     .include  "include/ascii.i"
 
                     .global   loadRecordFile
-                    .global   processCount,processHeader,processData                            | ********* DEBUG
+                    .global   processCount,processHeader,processData  | ********* DEBUG
 
 MAX_REC_SIZE        =         0x100
 MAX_DATA_SIZE       =         0x80
@@ -22,6 +22,7 @@ dataRecordCount:    .word     0
 *         1 file not found
 *-----------------------------------------------------------------------------------------------------
 loadRecordFile:     LINK      %FP,#0
+                    MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 
                     MOVE.L    8(%FP),-(%SP)
                     BSR       fOpen
@@ -36,7 +37,8 @@ loadRecordFile:     LINK      %FP,#0
                     BNE       3f
                     MOVE.B    #0,%D0
 
-3:                  UNLK      %FP
+3:                  MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
+                    UNLK      %FP
                     RTS
 
 *-----------------------------------------------------------------------------------------------------
@@ -345,18 +347,18 @@ processStart:       LINK      %FP,#0
                     MOVE.L    %D2,%D0
                     BSR       writeHexLong
                     BSR       newLine
-                    PUTS      strProceed
-
-                    BSR       readCh                                  | Get user response
-                    MOVE.B    %D0,%D1
-                    BSR       toUpperChar
-                    CMPI.B    #'Y',%D1
-                    BNE       4f
-
-                    PUTS      strBooting
+*                    PUTS      strProceed
+*
+*                    BSR       readCh                                  | Get user response
+*                    MOVE.B    %D0,%D1
+*                    BSR       toUpperChar
+*                    CMPI.B    #'Y',%D1
+*                    BNE       4f
+*
+*                    PUTS      strBooting
 
                     MOVE.L    %D2,%A0
-boot:               JMP       (%A0)                                   | Good luck!
+*boot:               JSR       (%A0)                                   | Good luck!
 
 4:                  UNLK      %FP
                     RTS
@@ -376,8 +378,8 @@ strCount1:          .asciz    "\r\nRead "
 strCount2:          .asciz    " data records\r\n"
 strCountError1:     .asciz    "\r\nCount error, expected 0x"
 strCountError2:     .asciz    " read %0x\r\n"
-strStartAddress:    .asciz    "Start address: 0x"
+strStartAddress:    .asciz    "\r\nStart address: 0x"
 strProceed:         .asciz    "Proceed with boot (y/N)? "
-strBooting:         .asciz    "\r\nBooting ..."
+strBooting:         .asciz    "\r\nBooting ...\r\n"
 
 
