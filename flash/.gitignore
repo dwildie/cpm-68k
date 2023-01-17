@@ -1,0 +1,5 @@
+.cproject
+.settings
+obj
+target
+/cmake-build-debug/

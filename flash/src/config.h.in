@@ -1,0 +1,2 @@
+#define VERSION_MAJOR @flash_VERSION_MAJOR@
+#define VERSION_MINOR @flash_VERSION_MINOR@
