@@ -1,4 +1,4 @@
-# CP/M 68K for the S100 68000/68010 Board
+# CP/M 68K for the S100 68000/68010 and 68030 Boards
 
 This project provides:
 * Boot loader/monitor
