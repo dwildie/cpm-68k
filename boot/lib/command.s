@@ -3,15 +3,20 @@
                     .include  "include/io-device.i"
                     .include  "include/file-sys.i"
 
-lineBufferLen       =         60
-maxTokens           =         4
-                    .global   runCmd
+lineBufferLen       =         80
+maxTokens           =         10
+                    .global   cmdLoop
+                    .global   bootOS9Cmd
+                    .global   cmdTokens
+                    .global   cmdTokenCount
+                    
 *---------------------------------------------------------------------------------------------------------
                     .bss
                     .align(2)
 
 lineBuffer:         ds.b      lineBufferLen
-tokens:             ds.l      maxTokens
+cmdTokens:          ds.l      maxTokens
+cmdTokenCount:      ds.w      1
 dumpAddr:           ds.l      1
 
 *---------------------------------------------------------------------------------------------------------
@@ -53,6 +58,7 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "mem", "mem", memDumpCmd, "mem <addr> <len>    : Display <len> bytes starting at <addr>", 0
                     CMD_TABLE_ENTRY "u", "u", memNextCmd, "u                   : Read the next memory block", 0
                     CMD_TABLE_ENTRY "i", "i", memPrevCmd, "i                   : Read the previous memory block", 0
+                    CMD_TABLE_ENTRY "os9", "os9", bootOS9Cmd, "os9 <addr>          : Boot OS9 at address <addr>", 0
                     CMD_TABLE_ENTRY "part", "p", partitionCmd, "part <partId>       : Select partition <partId>", 0
                     CMD_TABLE_ENTRY "ottmr", "or", ottmrCmd, "ottmr <addr>        : Read 32 bit value from <addr>", 0
                     CMD_TABLE_ENTRY "ottmw", "ow", ottmwCmd, "ottmw <addr> <value>: Write 32 bit <value> to <addr>", 0
@@ -61,10 +67,15 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "ottmt", "ot", ottmtCmd, "ottmt <bank>        : Test <bank>", 0
                     CMD_TABLE_ENTRY "pin", "pi", readPortCmd, "pin <port>          : Read from portNo", 0
                     CMD_TABLE_ENTRY "pout", "po", writePortCmd, "pout <port> <byte>  : Write byte to portNo", 0
+                    CMD_TABLE_ENTRY "restart", "restart", restartCmd, "restart             : Restart the monitor", 0
                     CMD_TABLE_ENTRY "read", "r", readCmd, "read <lba>          : Read and display the drive sector at <lba>", 0
                     CMD_TABLE_ENTRY "readNext", ">", readNextCmd, ">                   : Increment LBA, read and display the drive sector", 0
                     CMD_TABLE_ENTRY "readPrev", "<", readPrevCmd, "<                   : Decrement LBA, read and display the drive sector", 0
-                    CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs                : Display the registers", 0
+                    CMD_TABLE_ENTRY "regs", "rg", regsCmd, "regs                : Display registers ", 0
+                    CMD_TABLE_ENTRY "rtcr", "rr", rtcReadCmd, "rtcr <addr>         : Read RTC address", 0
+                    CMD_TABLE_ENTRY "rtcw", "rw", rtcWriteCmd, "rtcw <addr> <value> : Write RTC address", 0
+                    CMD_TABLE_ENTRY "rtcd", "rd", rtcDisplayCmd, "rtcd                : Display RTC time", 0
+                    CMD_TABLE_ENTRY "rtcs", "rs", rtcSetCmd, "rtcs <date> <time>  : Set RTC date 'YYYY MM DD' and time 'hh mm ss'", 0
                     CMD_TABLE_ENTRY "run", "ru", runCmd, "run <file>          : Load S-Record <file> into memory and run", 0
                     CMD_TABLE_ENTRY "scmd", "sc", serialCmdCmd, "scmd <[A|B]> Reg Val: Send Val to register Reg for port A, B", 0
                     CMD_TABLE_ENTRY "sin", "sn", serialInCmd, "sin <[A|B|U]>       : Input from Serial port A, B or USB to console", 0
@@ -83,11 +94,13 @@ cmdTable:                                                             | Array of
           .endif
                     CMD_TABLE_ENTRY "ts", "ts", tuartStatusCmd, "ts <A|B>            : Display TU-ART port A or B status", 0
                     CMD_TABLE_ENTRY "ti", "ti", tuartInitCmd, "ti                  : Initialise TU-ART ports", 0
+                    CMD_TABLE_ENTRY "unix", "u", bootUnixCmd, "unix                : Load unix100 COFF file into memory and execute", 0
+                    CMD_TABLE_ENTRY "ummu", "um", initUnixMMU, "ummu                : Initialise the MMU for Unix", 0
                     CMD_TABLE_ENTRY "w0", "w0", ideWait0Cmd, "w0                  : Set the IDE wait 0 parameter", 1
                     CMD_TABLE_ENTRY "w1", "w1", ideWait1Cmd, "w1                  : Set the IDE wait 1 parameter", 1
                     CMD_TABLE_ENTRY "w2", "w2", ideWait2Cmd, "w2                  : Set the IDE wait 2 parameter", 1
                     CMD_TABLE_ENTRY "w3", "w3", ideWait3Cmd, "w3                  : Set the IDE wait 3 parameter", 1
-                    CMD_TABLE_ENTRY "exec", "x", execCmd, "exec <file> <params>: Execute ELF <file>", 0
+                    CMD_TABLE_ENTRY "exec", "x", execCmd, "exec <file> <params>: Execute COFF/ELF <file>", 0
 
 cmdTableLength      =         . - cmdTable
 cmdEntryLength      =         0x12
@@ -121,15 +134,15 @@ cmdLoop:            BSR       newLine
                     CMPI.B    #0,%D0                                  | Check for empty line
                     BEQ       cmdLoop                                 | Try again
 
-                    LEA       tokens,%A1
+                    LEA       cmdTokens,%A1
                     MOVE.B    #maxTokens,%D1
                     BSR       split
-                    MOVE.B    %D0,%D3                                 | Returns token count
+                    MOVE.W    %D0,cmdTokenCount                       | Returns token count
 
-                    TST.B     %D3                                     | Check for a blank string
+                    TST.B     %D0                                     | Check for a blank string
                     BEQ       cmdLoop
 
-                    LEA       tokens,%A1
+                    LEA       cmdTokens,%A1
                     MOVE.L    (%A1),%A0                               | Look for a command that matches the first token
 rc1:                BSR       getCmd
                     BEQ       1f
@@ -138,8 +151,8 @@ rc1:                BSR       getCmd
                     BRA       cmdLoop                                 | and continue
 
 1:                  MOVE.L    cmdEntrySubroutine(%A0),%A2             | Get the address of the command
-                    MOVE.B    %D3,%D0                                 | %D0 will contain the number of command line tokens
-                    LEA       tokens,%A0                              | %A0 will contain the token array
+                    MOVE.W    cmdTokenCount,%D0                       | %D0 will contain the number of command line tokens
+                    LEA       cmdTokens,%A0                           | %A0 will contain the token array
                     JSR       (%A2)                                   | Jump to the command's subroutine
 
                     BRA       cmdLoop                                 | and repeat ...
@@ -425,6 +438,45 @@ diskDefCmd:         BSR       showDiskDef
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
+* Boot unix
+*---------------------------------------------------------------------------------------------------------
+unixArgs:			.long	strUnix100
+
+bootUnixCmd:        CMPI.B    #1,%D0                                  | Needs one arg
+                    BLT       wrongArgs
+
+                    LINK      %FP,#-8
+                    ADDQ.L    #4,%A0
+                    MOVE.L    %A0,-4(%FP)                             | Save argv
+                    SUBQ.L    #1,%D0
+                    MOVE.L    %D0,-8(%FP)                             | Save argc
+
+                    BSR       newLine
+
+                    PUTS      strSerialInit
+                    BSR       serInitA
+                    BSR       serInitB
+                    BSR       newLine
+                    
+					BSR		  initUnixMMU
+					
+					MOVE.L    #fatTable,-(%SP)                        | fatTable address
+					MOVE.L    #biosTable,-(%SP) 	  			      | biosTable address
+					LEA		  unixArgs,%A0
+					MOVE.L	  %A0,-(%SP)                              | argv
+                    MOVE.L    #1,-(%SP)                               | argc
+                    BSR       fatInit
+                    BNE       1f                                      | Failed
+
+                    BSR       executeCE
+                    ADD.L     #12,%SP
+
+                    BSR       fatExit
+
+1:                  UNLK      %FP
+					RTS
+					
+*---------------------------------------------------------------------------------------------------------
 * Boot cromix
 *---------------------------------------------------------------------------------------------------------
 bootCromixCmd:
@@ -497,7 +549,26 @@ bootCromixCmd:
 11:                 RTS
 
 *---------------------------------------------------------------------------------------------------------
-* Execute the arg[1] ELF file
+* Jump to address
+*---------------------------------------------------------------------------------------------------------
+bootOS9Cmd:         
+*                   CMPI.B    #2,%D0                                  | Needs at least two args
+*                   BLT       wrongArgs
+                    
+                    BSR       newLine
+                    
+*1:                  MOVE.L    %A0,%A1                                 | Use A1
+*                    MOVE.L    4(%A1),%A0                              | arg[1], memory address
+*                    BSR       asciiToLong
+                    
+                    MOVE.L    #0xF00000,%A0
+                    
+                    MOVE.L    0(%A0),%SP
+                    MOVE.L    4(%A0),%A0
+                    JMP       (%A0)
+	 
+*---------------------------------------------------------------------------------------------------------
+* Execute the arg[1] COFF/ELF file
 *---------------------------------------------------------------------------------------------------------
 execCmd:            CMPI.B    #2,%D0                                  | Needs at least two args
                     BLT       wrongArgs
@@ -510,13 +581,15 @@ execCmd:            CMPI.B    #2,%D0                                  | Needs at
 
                     BSR       newLine
 
+					MOVE.L    #fatTable,-(%SP)                        | fatTable address
+					MOVE.L    #biosTable,-(%SP) 	  			      | biosTable address
                     MOVE.L    -4(%FP),-(%SP)                          | argv
                     MOVE.L    -8(%FP),-(%SP)                          | argc
                     BSR       fatInit
                     BNE       1f                                      | Failed
 
-                    BSR       executeELF
-                    ADDQ.L    #4,%SP
+                    BSR       executeCE
+                    ADD.L     #12,%SP
 
                     BSR       fatExit
 
@@ -1050,6 +1123,12 @@ regsCmd:            BSR       writeRegs
           .endif
 
 *---------------------------------------------------------------------------------------------------------
+* Restart the monitor
+*---------------------------------------------------------------------------------------------------------
+restartCmd:			BSR       newLine
+                    JMP       warmBoot                                | Restart
+
+*---------------------------------------------------------------------------------------------------------
 * Set stack pointer command: %D0 contains the number of entered command args, %A0 the start of the arg array
 *---------------------------------------------------------------------------------------------------------
 sspCmd:             CMPI.B    #2,%D0                                  | Needs two args to set SP
@@ -1528,9 +1607,7 @@ readPortCmd:        CMPI.B    #2,%D0                                  | Needs tw
                     BSR       newLine
 
                     RTS
-          .endif
 
-          .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
 * Write port command
 *---------------------------------------------------------------------------------------------------------
@@ -1550,8 +1627,9 @@ writePortCmd:       CMPI.B    #3,%D0                                  | Needs th
 
                     MOVE.B    %D0,%D1
 
-                    MOVE.L    4(%A1),%A0                              | arg[1], port number
+                    MOVE.L    4(%A1),%A0                              | arg[1], address
                     BSR       asciiToLong                             | value returned in D0
+                    
                     ADD.L     #__ports_start__,%D0                    | Add port number to start of port range
 
                     BSR       writeHexLong
@@ -1560,6 +1638,105 @@ writePortCmd:       CMPI.B    #3,%D0                                  | Needs th
                     MOVE.L    %D0,%A0                                 | Write the data byte to the port
                     MOVE.B    %D1,(%A0)
 
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Read RTC command
+*---------------------------------------------------------------------------------------------------------
+rtcReadCmd:         CMPI.B    #2,%D0                                  | Needs two args to read a RTC address
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  PUTS      strReadRTC
+
+                    MOVE.L    4(%A0),%A0                              | arg[1], address
+                    BSR       asciiToLong                             | value returned in D0
+
+                    BSR       writeHexLong
+                    PUTS      strEqualsHex
+
+                    MOVE.L    #0x70,%A1
+                    ADD.L     #__ports_start__,%A1                    | Add port number to start of port range
+                    MOVE.L    #0x71,%A2
+                    ADD.L     #__ports_start__,%A2                    | Add port number to start of port range
+
+                    MOVE.B    %D0,(%A1)                               | Write address to port 0x70
+                    MOVE.B    (%A2),%D0                               | Read data from port 0x71
+
+                    BSR       writeHexByte
+                    BSR       newLine
+
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* RTC display command
+*---------------------------------------------------------------------------------------------------------
+rtcDisplayCmd:
+                    LINK      %FP,#-8
+                    ADDQ.L    #4,%A0
+                    MOVE.L    %A0,-(%SP)                             | Save argv
+                    SUBQ.L    #1,%D0
+                    MOVE.L    %D0,-(%SP)                             | Save argc
+
+                    BSR       newLine
+
+*                    MOVE.L    -4(%FP),-(%SP)                          | argv
+*                    MOVE.L    -8(%FP),-(%SP)                          | argc
+
+                    BSR       displayTime
+                    ADD.L     #8,%SP
+
+1:                  UNLK      %FP
+                    RTS
+                    
+*---------------------------------------------------------------------------------------------------------
+* RTC set command
+*---------------------------------------------------------------------------------------------------------
+rtcSetCmd:
+                    LINK      %FP,#-8
+                    MOVE.L    %A0,-(%SP)                             | Save argv
+                    MOVE.L    %D0,-(%SP)                             | Save argc
+
+                    BSR       newLine
+
+                    BSR       setTime
+                    ADD.L     #8,%SP
+
+1:                  UNLK      %FP
+                    RTS
+                    
+*---------------------------------------------------------------------------------------------------------
+* Write RTC command
+*---------------------------------------------------------------------------------------------------------
+rtcWriteCmd:        CMPI.B    #3,%D0                                  | Needs three args to write a RTC address
+                    BEQ       1f
+                    BRA       wrongArgs
+
+1:                  MOVE.L    %A0,%A1
+
+                    PUTS      strWritePortA
+
+                    MOVE.L    8(%A1),%A0                              | arg[2], data byte
+                    BSR       asciiToLong                             | value returned in D0
+
+                    BSR       writeHexByte
+                    PUTS      strWriteRTCB
+
+                    MOVE.B    %D0,%D1
+
+                    MOVE.L    4(%A1),%A0                              | arg[1], address
+                    BSR       asciiToLong                             | value returned in D0
+                    
+                    BSR       writeHexLong
+                    BSR       newLine
+
+                    MOVE.L    #0x70,%A2
+                    ADD.L     #__ports_start__,%A2                    | Add port number to start of port range
+                    MOVE.L    #0x71,%A3
+                    ADD.L     #__ports_start__,%A3                    | Add port number to start of port range
+                    
+                    MOVE.B    %D0,(%A2)
+                    MOVE.B    %D1,(%A3)
                     RTS
           .endif
 
@@ -1698,6 +1875,8 @@ strStackErr2:       .asciz    ", read 0x"
 strReadPort:        .asciz    "\r\nRead from port 0x"
 strWritePortA:      .asciz    "\r\nWrite 0x"
 strWritePortB:      .asciz    " to port 0x"
+strReadRTC:         .asciz    "\r\nRead from RTC Address 0x"
+strWriteRTCB:       .asciz    " to RTC Address 0x"
 strSerialInit:      .asciz    "\r\nInitialising serial port "
 strSerialStatus:    .asciz    "\r\nStatus of serial port "
 strSerialLoop:      .asciz    "\r\nLoopback serial port "
@@ -1705,4 +1884,5 @@ strSerialIn:        .asciz    "\r\nInput from serial port "
 strSerialOut:       .asciz    "\r\nOutput to serial port "
 strUSB:             .asciz    "USB\r\n"
 strCacheRegister:   .asciz    "\r\nCache register: "
+strUnix100:         .asciz    "unix100"
           .endif

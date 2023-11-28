@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
   uint32_t bad_block_count = 0;
 #endif
 
-  printf("68030 ZModem, Damian Wildie, 19/07/2022 V0.0.1\r\n");
+  printf("68030 ZModem, Damian Wildie, 19/07/2022 V0.0.2\r\n");
 //  printf("argc = %d\r\n", argc);
 //  for (int i = 0; i < argc; i++) {
 //    printf("argv[%d]: %s\r\n", i, argv[i]);

@@ -1,12 +1,16 @@
                     .text     0
                     .global   _start
-
+                    .global   fatTable
+                    .global   biosTable
 *---------------------------------------------------------------------------------------------------------
 * Entry point
 *---------------------------------------------------------------------------------------------------------
 _start:             LINK      %FP,#0
 
                     BSR       initDataSegs                            | initialise data segments
+
+                    MOVE.L    20(%FP), fatTable
+                    MOVE.L    16(%FP), biosTable
 
 		    MOVE.L    12(%FP),%A0                             | argv
 	            MOVE.L    %A0, -(%SP)
@@ -35,13 +39,13 @@ initDataSegs:
 
 
 *---------------------------------------------------------------------------------------------------------
-                    .section  .rodata.strings
-                    .align(2)
-                    .global   strId1, strId2
-arg0:               .asciz    "zm"
-arg1:               .asciz    "usb"
+*                    .section  .rodata.strings
+*                    .align(2)
+*                    .global   strId1, strId2
+*arg0:               .asciz    "zm"
+*arg1:               .asciz    "usb"
 
                     .data
-                    .align(2)
-argv:		    DC.L     arg0
-                    DC.L     arg1
+                    .align(4)
+fatTable:		    DC.L     0
+biosTable:          DC.L     0

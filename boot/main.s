@@ -6,6 +6,7 @@
                     .global   warmBoot
                     .global   initDataSegs
                     .global   biosTable
+                    .global   fatTable
 
 *---------------------------------------------------------------------------------------------------------
 * Setup the reset vectors, initial SSP, & PC.  These will appear at 0x000000 immediately afte a hardware reset
@@ -19,7 +20,7 @@
                     .org      0x00000010
 
 *---------------------------------------------------------------------------------------------------------
-* Jump table for hosted applications nd operating systems to access console and disk functions
+* Jump table for hosted applications and operating systems to access console and disk functions
 *---------------------------------------------------------------------------------------------------------
 biosTable:          DC.L      biosInitDrives
                     DC.L      biosGetDriveStatus
@@ -29,6 +30,9 @@ biosTable:          DC.L      biosInitDrives
                     DC.L      biosOutChar
                     DC.L      biosInChar
                     DC.L      biosHasChar
+                    DC.L	  biosGetDiskSize
+                    DC.L      biosGetCommandTokenCount
+                    DC.L      biosGetCommandToken
 
 *---------------------------------------------------------------------------------------------------------
 * Offset to the start of the fatTable
@@ -100,7 +104,7 @@ strId1:             .asciz    "\n\rS100 68000"
           .ifdef              IS_68030
 strId1:             .asciz    "\n\rS100 68030"
           .endif
-strId2:             .asciz    " Boot Monitor V0.3.1.B1 __BUILD-DATE__, Damian Wildie\r\n\r\n"
+strId2:             .asciz    " Boot Monitor V0.3.1.B3 __BUILD-DATE__, Damian Wildie\r\n\r\n"
 
 
 *---------------------------------------------------------------------------------------------------------

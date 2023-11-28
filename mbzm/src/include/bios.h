@@ -5,7 +5,7 @@
 
    -------------------------------------------------------- */
 
-#define M68K_BIOS_ENTRY 0xFC0010
+//#define M68K_BIOS_ENTRY 0xF80010
 
 typedef struct {
   int (*initialise)();
@@ -18,7 +18,7 @@ typedef struct {
   int (*hasChar)();     // Return zero if a input char is available, otherwise non-zero
 } m68k_bios_entry;
 
-#define FAT_BIOS_ENTRY 0xFC0040
+//#define FAT_BIOS_ENTRY 0xF80040
 
 typedef struct {
   void* (*fOpenFAT)(const char *path, const char *modifiers);

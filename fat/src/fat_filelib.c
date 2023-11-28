@@ -1022,7 +1022,8 @@ int fl_fread(void * buffer, int size, int length, void *f )
     // If first call to library, initialise
     CHECK_FL_INIT();
 
-    if (buffer==NULL || file==NULL)
+//    if (buffer==NULL || file==NULL)
+    if (file==NULL)
         return -1;
 
     // No read permissions

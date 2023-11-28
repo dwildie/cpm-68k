@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include "bios.h"
 
-static m68k_bios_entry *bios = (m68k_bios_entry*)M68K_BIOS_ENTRY;
+extern m68k_bios_entry *biosTable;
 
 extern size_t writeStrn(const char *bp, size_t n);
 
 size_t io_write(FILE* instance, const char *ptr, size_t n) {
   for (int i = 0; i < n; i++) {
-    bios->outChar(*(ptr + i) & 0x7f);
+    biosTable->outChar(*(ptr + i) & 0x7f);
   }
   return n;
 }

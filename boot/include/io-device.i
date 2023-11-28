@@ -8,7 +8,7 @@ DEV_USB             =         'U'                                     | USB port
 * ----------------------------------------------------------------------------------
 IO_USB              =         0x00                                    | USB port
 IO_SER_A            =         0x01                                    | Serial port A
-IO_PROP             =         0x02                                    | Serial port B
-IO_DETECT           =         0x03                                    | Propeller console
+IO_PROP             =         0x02                                    | Propeller console
+IO_DETECT           =         0x03                                    | Detect
 
 IOBYTE              =         __ports_start__ + 0xEF                  | IOByte Port

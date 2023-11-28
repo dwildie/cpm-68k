@@ -92,7 +92,7 @@ functionTable:
                     .long     consoleIn                               | Function 3
                     .long     consoleOut                              | Function 4
                     .long     readSector                              | Function 5
-                    .long     writeSector                             | Function 5
+                    .long     writeSector                             | Function 6
 
 functionCount       =         (. - functionTable) / 4
 

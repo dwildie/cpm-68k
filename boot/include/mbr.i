@@ -44,6 +44,7 @@ PT_SIZE             =         PT_ENTRIES + PE_SIZE * PRT_ENTRIES
 *---------------------------------------------------------------------------------------------------------
 PID_FAT12           =         0x01
 PID_FAT16           =         0x04
+PID_OS9             =         0x09
 PID_FAT16B          =         0x0E
 PID_FAT32           =         0x0C
 PID_CPM80           =         0x52

@@ -35,7 +35,7 @@ loadRecordFile:     LINK      %FP,#0
 
 2:                  CMPI.B    #1,%D0                                  | 1 is end of file, so return 0
                     BNE       3f
-                    MOVE.B    #0,%D0
+                    MOVE.L    #0,%D0
 
 3:                  MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
                     UNLK      %FP

@@ -38,7 +38,8 @@ setVectors:         MOVE.L    #busError,VECTOR_BUS_ERR
                     MOVE.L    #irq7,VECTOR_IRQ_7
 
                     MOVE.L    #biosHandler,VECTOR_TRAP
-
+					MOVE.L    #mmuError,MMU_CONFIG_ERROR
+					
                     MOVE.W    #UDV_FIRST,%A0
 1:                  MOVE.L    #irqDummy,(%A0)
                     ADD.W     #4,%A0
@@ -89,6 +90,12 @@ unexpectedError:    PUTS      strUnexpectedError
 * Exception handler:
 *-----------------------------------------------------------------------------------------------------
 trace:              PUTS      strTrace
+                    RTE
+
+*-----------------------------------------------------------------------------------------------------
+* Exception handler: MMU Configuration error
+*-----------------------------------------------------------------------------------------------------
+mmuError:           PUTS      strMMUError
                     RTE
 
 *-----------------------------------------------------------------------------------------------------
@@ -330,6 +337,7 @@ showIrqCounts:      BSR       getIrqMask
                     .section  .rodata.strings
                     .align(2)
 
+strMMUError:        .asciz    "\r\nMMU error, press any key to continue\r\n"
 strBusError:        .asciz    "\r\nBus error, press any key to continue\r\n"
 strAddressError:    .asciz    "\r\nAddress error, press any key to continue\r\n"
 strIllInstrError:   .asciz    "\r\nIllegal instruction error, press any key to continue\r\n"

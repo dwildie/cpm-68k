@@ -12,6 +12,7 @@
                     .global   setPartitionId
                     .global   getPartitionId
                     .global   getPartitionType
+                    .global   getDiskSize
 
 *---------------------------------------------------------------------------------------------------------
 * hasValidTable(word driveId)
@@ -119,6 +120,24 @@ getPartitionStart:  LINK      %FP,#0
                     UNLK      %FP
                     RTS
 
+*-----------------------------------------------------------------------------------------------------
+* getDiskSize(word driveId)
+*-----------------------------------------------------------------------------------------------------
+getDiskSize:        LINK      %FP,#0
+                    MOVEM.L   %D1-%D6/%A2-%A4,-(%SP)
+
+                    CLR.L     %D6
+                    MOVE.W    0x08(%FP),%D6                           | Current drive
+                    MULU.W    #PT_SIZE,%D6
+                    LEA       PART_TABLE_A,%A3
+                    ADD.L     %D6,%A3                                 | Base of drive partition entry
+                    
+                    MOVE.L    PT_SECTORS(%A3),%D0
+                    
+8:                  MOVEM.L   (%SP)+,%D1-%D6/%A2-%A4
+                    UNLK      %FP
+                    RTS
+                    
 *-----------------------------------------------------------------------------------------------------
 * showPartitions(word driveId, word quiet)
 * Read the MBR parttion table from the drive, validate and copy.
@@ -348,6 +367,11 @@ showType:           CMP.B     #PID_FAT12,%D0
                     PUTS      strCROMIX
                     RTS
 
+1:                  CMP.B     #PID_OS9,%D0
+                    BNE       1f
+                    PUTS      strOS9
+                    RTS
+
 1:                  CMP.B     #PID_CDOS,%D0
                     BNE       1f
                     PUTS      strCDOS
@@ -381,5 +405,6 @@ strCPM80:           .asciz    "CP/M"
 strCPM86:           .asciz    "CP/M"
 strCDOS:            .asciz    "CDOS"
 strCROMIX:          .asciz    "Cromix"
+strOS9:             .asciz    "OS-9"
 
 

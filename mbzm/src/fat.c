@@ -2,22 +2,24 @@
 #include "fat.h"
 #include "bios.h"
 
-static fat_bios_entry *fatBios = (fat_bios_entry*)FAT_BIOS_ENTRY;
+extern m68k_bios_entry *biosTable;
+extern fat_bios_entry *fatTable;
+//static fat_bios_entry *fatTable = (fat_bios_entry*)FAT_BIOS_ENTRY;
 
 void* fl_fopen(const char *path, const char *modifiers) {
-  return fatBios->fOpenFAT(path, modifiers);
+  return fatTable->fOpenFAT(path, modifiers);
 }
 
 int fl_fwrite(const void *data, int size, int count, void *file ) {
-  return fatBios->fWriteFAT(size * count, data);
+  return fatTable->fWriteFAT(size * count, data);
 }
 
 int fl_fread(void *data, int size, int count, void *file ) {
-  return fatBios->fReadFAT(size * count, data);
+  return fatTable->fReadFAT(size * count, data);
 }
 
 void fl_fclose(void *file) {
-  fatBios->fCloseFAT();
+  fatTable->fCloseFAT();
 }
 
 void fatTest() {
