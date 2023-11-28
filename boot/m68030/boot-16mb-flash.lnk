@@ -1,0 +1,60 @@
+OUTPUT_FORMAT(srec)
+
+MEMORY
+{
+    ram   : ORIGIN = 0x00F60000, LENGTH = 0x10000
+    buff  : ORIGIN = 0x00F70000, LENGTH = 0x10000
+    rom   : ORIGIN = 0x00F80000, LENGTH = 0x80000
+    ports : ORIGIN = 0xFFFF0000, LENGTH = 0x10000
+    ide   : ORIGIN = 0xFFFF0030, LENGTH = 0x5
+}
+
+SECTIONS
+{
+  
+  __stack_size__  = 0x4000;
+  __rom_end__     = ORIGIN(rom) + LENGTH(rom) - 1;
+  __ram_end__     = ORIGIN(ram) + LENGTH(ram) - 1;
+  __buffer__      = ORIGIN(buff);
+  __ports_start__ = ORIGIN(ports);
+    
+  .ports.ide : { } > ide
+  .text : { *(.text*) } > rom
+  .rodata : { *(.rodata*) } > rom
+  
+  __text_end__ = .;
+  __free_rom_size__ = __rom_end__ - .;
+  
+  __data_rom_start__ = .;
+  
+    .data : {
+    __data_start__ = .;
+    *(.data*)
+  } > ram AT > rom
+  
+  __data_end__ = .;
+  __data_size__ = __data_end__ - __data_start__;
+  
+  .bss : { 
+    __bss_start__ = .;
+    *(.bss*) *(COMMON)
+    __bss_end__ = .;
+    __bss_size__ = __bss_end__ - __bss_start__;
+    . = ALIGN(0x10);
+    _end = .; 
+  } > ram
+  
+  . += __stack_size__;
+  . = ALIGN (0x10);
+  __stack_init__ = .;
+  
+  . += 1;
+  . = ALIGN (0x100);
+  __free_ram_start__ = .;
+  __free_ram_size__ = __ram_end__ - __free_ram_start__;
+  
+  /DISCARD/ : {
+    *(.eh_frame);
+    *(.comment);
+  }
+}
