@@ -14,6 +14,9 @@ readLn:             MOVEM.L   %D1-%D2,-(%SP)
 
 1:                  BSR       readCh                        | Read a character into %D0
 
+                    TST.B     %D0                           | Check for a null character
+                    BEQ       1b
+                    
                     CMPI.B    #BS,%D0                       | Check for a backspace
                     BNE       2f
                     TST.B     %D2                           | Check for empty buffer
