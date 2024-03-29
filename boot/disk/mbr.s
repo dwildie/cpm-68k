@@ -131,13 +131,13 @@ getDiskSize:        LINK      %FP,#0
                     MULU.W    #PT_SIZE,%D6
                     LEA       PART_TABLE_A,%A3
                     ADD.L     %D6,%A3                                 | Base of drive partition entry
-                    
+
                     MOVE.L    PT_SECTORS(%A3),%D0
-                    
+
 8:                  MOVEM.L   (%SP)+,%D1-%D6/%A2-%A4
                     UNLK      %FP
                     RTS
-                    
+
 *-----------------------------------------------------------------------------------------------------
 * showPartitions(word driveId, word quiet)
 * Read the MBR parttion table from the drive, validate and copy.
@@ -173,13 +173,24 @@ readMBR:            LINK      %FP,#0
                     BSR       readSectors
                     BNE       7f
 
-                    CLR.W     %D0
+                    LEA       __free_ram_start__,%A2
+                    CMPI.B    #0x55,0x1FE(%A2)                        | Validate the MBR signature
+                    BNE       9f
+                    CMPI.B    #0xAA,0x1FF(%A2)
+                    BEQ       10f
+
+9:                  TST       0x0A(%FP)                               | If quiet, don't show error
+                    BNE       7f
+                    PRT_ERR   strSignature                            | Error, invalid signature
+                    BRA       7f
+
+10:                 CLR.W     %D0
                     LEA       __free_ram_start__,%A2
                     ADD       #MBR_PRT_TBL_0,%A2                      | Offset to the MBR's first partition table entry
                     LEA       PT_ENTRIES(%A3),%A4                     | Offset to our first partition table entry
 
                     MOVE.L    PT_SECTORS(%A3),%D1                     | Load the total disk sector count into D1
-                    
+
 1:                  MOVE.B    PRT_TYPE(%A2),%D2                       | Partition type
                     BEQ       6f                                      | 0x00 identifies an unused partition
                     MOVE.B    %D2,PE_TYPE(%A4)                        | Save in our table entry
@@ -397,6 +408,7 @@ strStartEnd:        .asciz    "], end LBA must be grater than start LBA\r\n"
 strStartLast:       .asciz    "], start LBA is less than previous partition's end LBA\r\n"
 strHeader:          .asciz    "Partition   Start       End   Sectors  Id   Type\r\n"
 strInvalidMBR:      .asciz    "   No valid MBR partition table\r\n"
+strSignature:       .asciz    "   Invalid MBR signature\r\n"
 strFAT12:           .asciz    "FAT12"
 strFAT16:           .asciz    "FAT16"
 strFAT16B:          .asciz    "FAT16B"

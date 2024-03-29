@@ -2,8 +2,10 @@ OUTPUT_FORMAT(srec)
 
 MEMORY
 {
+    bios  : ORIGIN = 0xFC0010, LENGTH = 0x20
     rom   : ORIGIN = 0xFD0000, LENGTH = 0x8000
     ram   : ORIGIN = 0xFD8000, LENGTH = 0x8000
+    buff  : ORIGIN = 0xFE0000, LENGTH = 0x10000
     ports : ORIGIN = 0xFF0000, LENGTH = 0xFFFF
     ide   : ORIGIN = 0xFF0030, LENGTH = 0x5
 }
@@ -11,10 +13,12 @@ MEMORY
 SECTIONS
 {
   
-  __stack_size__ = 0x1000;
+  __stack_size__  = 0x1000;
 
-  __rom_end__ = ORIGIN(rom) + LENGTH(rom) - 1;
-  __ram_end__ = ORIGIN(ram) + LENGTH(ram) - 1;
+  __bios_table__  = ORIGIN(bios);
+  __rom_end__     = ORIGIN(rom) + LENGTH(rom) - 1;
+  __ram_end__     = ORIGIN(ram) + LENGTH(ram) - 1;
+  __buffer__      = ORIGIN(buff);
   __ports_start__ = ORIGIN(ports);
   
   .ports.ide : { } > ide

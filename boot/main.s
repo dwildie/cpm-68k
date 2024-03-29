@@ -30,7 +30,7 @@ biosTable:          DC.L      biosInitDrives
                     DC.L      biosOutChar
                     DC.L      biosInChar
                     DC.L      biosHasChar
-                    DC.L	  biosGetDiskSize
+                    DC.L      biosGetDiskSize
                     DC.L      biosGetCommandTokenCount
                     DC.L      biosGetCommandToken
 
@@ -42,11 +42,13 @@ biosTable:          DC.L      biosInitDrives
 *---------------------------------------------------------------------------------------------------------
 * Jump table for programs to access FAT disk functions
 *---------------------------------------------------------------------------------------------------------
+          .ifdef              IS_68030
 fatTable:           DC.L      fOpenFAT
                     DC.L      fReadFAT
                     DC.L      fWriteFAT
                     DC.L      fCloseFAT
-
+          .endif
+          
                     .align(4)
 *---------------------------------------------------------------------------------------------------------
 * Entry point
@@ -63,6 +65,10 @@ _start:             BSR       initDataSegs                            | initiali
 
 warmBoot:           PUTS      strId1                                  | Identification string
                     PUTS      strId2
+
+          .ifdef              IS_68000
+                    bsr       copyBiosTable
+          .endif
 
                     BSR       initialiseDiskSys                       | Initialise the disk subsystem
                     BSR       initDrives                              | List the available drives

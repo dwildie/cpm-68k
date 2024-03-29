@@ -37,6 +37,9 @@ BIOS_AS_OBJ = $(patsubst ../bios/%.s, obj/bios/%.o, $(BIOS_AS_SRC))
 DSK_AS_SRC = $(wildcard ../disk/*.s)
 DSK_AS_OBJ = $(patsubst ../disk/%.s, obj/disk/%.o, $(DSK_AS_SRC))
 
+FAT_C_SRC = $(wildcard ../fat/*.c)
+FAT_C_OBJ = $(patsubst ../fat/%.c, obj/fat/%.o, $(FAT_C_SRC))
+
 DSK_C_SRC = $(wildcard ../disk/*.c)
 DSK_C_OBJ = $(patsubst ../disk/%.c, obj/disk/%.o, $(DSK_C_SRC))
 
@@ -56,7 +59,7 @@ MMU_AS_SRC = $(wildcard ../mmu/*.s)
 MMU_AS_OBJ = $(patsubst ../mmu/%.s, obj/mmu/%.o, $(MMU_AS_SRC))
 
 
-OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(LIB_C_OBJ) $(IO_AS_OBJ) $(IO_C_OBJ) $(DSK_AS_OBJ) $(DSK_C_OBJ) $(MMU_AS_OBJ)
+OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(LIB_C_OBJ) $(IO_AS_OBJ) $(IO_C_OBJ) $(DSK_AS_OBJ) $(DSK_C_OBJ) $(FAT_C_OBJ) $(MMU_AS_OBJ)
 
 # --------------------------------------------------------------------------------
 # Dependencies
@@ -65,6 +68,10 @@ all: target/boot30-16mb-flash.srec target/boot30-16mb.srec target/boot30-4mb.sre
 
 obj/bios/%.o:	../bios/%.s | obj/bios
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
+
+obj/fat/%.o:	../fat/%.c | obj/fat
+	$(CC) $(CCFLAGS) -S -o $(@:.o=.s) $<
+	$(CC) $(CCFLAGS) -c -o $@ $<
 
 obj/disk/%.o:	../disk/%.s | obj/disk
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
@@ -147,6 +154,9 @@ obj:
 	mkdir -p $@
 
 obj/io: obj
+	mkdir -p $@
+
+obj/fat: obj
 	mkdir -p $@
 
 obj/disk: obj

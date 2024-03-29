@@ -1,5 +1,5 @@
 SUBS := m68000 m68030
-SUBS := m68030
+#SUBS := m68030
 
 all clean: $(SUBS) FORCE
 

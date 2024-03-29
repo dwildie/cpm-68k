@@ -22,6 +22,7 @@ F_PARTITION_OFFSET: ds.l      1
 *-----------------------------------------------------------------------------------------------------
 * fatInit
 *-----------------------------------------------------------------------------------------------------
+          .ifdef              IS_68030
 fatInit:            LINK      %FP,#0
                     MOVE.W    currentDrive,%D0                        | Get current drive
                     MOVE.W    %D0,F_DRIVE_ID                          | Local driveId variable
@@ -32,7 +33,7 @@ fatInit:            LINK      %FP,#0
 
                     MOVE.W    %D0,F_FILESYS_TYPE
 
-                    CMPI.W    #FS_FAT,%D0                             | FAT
+                    CMPI.W    #FS_FAT_P,%D0                           | FAT
                     BEQ       1f
 
                     PUTS      strUnsupportedType                      | Unsupported partition
@@ -56,19 +57,22 @@ fatInit:            LINK      %FP,#0
 
 2:                  UNLK      %FP
                     RTS
+          .endif
 
 *-----------------------------------------------------------------------------------------------------
-* fatInit
+* fatExit
 *-----------------------------------------------------------------------------------------------------
+          .ifdef              IS_68030
 fatExit:            MOVE.W    F_FILESYS_TYPE,%D0
 
-                    CMPI.W    #FS_FAT,%D0                             | FAT
+                    CMPI.W    #FS_FAT_P,%D0                           | FAT
                     BNE       1f
 
                     /* FAT Partition */
                     BSR       mediaClose                              | Close the FAT driver
 
 1:                  RTS
+          .endif
 
 *-----------------------------------------------------------------------------------------------------
 * fOpen(*fileName)
@@ -86,10 +90,12 @@ fOpen:              LINK      %FP,#0
 
                     MOVE.W    %D0,F_FILESYS_TYPE
 
-                    CMPI.W    #FS_FAT,%D0                             | FAT
+          .ifdef              IS_68030
+                    CMPI.W    #FS_FAT_P,%D0                           | FAT
                     BEQ       1f
+          .endif
 
-                    CMPI.W    #FS_CPM,%D0                             | CP/M
+                    CMPI.W    #FS_CPM_P,%D0                           | CP/M
                     BEQ       2f
 
                     CMPI.W    #FS_NONE,%D0                            | None
@@ -98,6 +104,7 @@ fOpen:              LINK      %FP,#0
                     PUTS      strUnsupportedType                      | Unsupported partition
                     BRA       4f
 
+          .ifdef              IS_68030
                     /* FAT Partition */
 1:                  MOVE.W    currentDrive,-(%SP)                     | driveId
                     BSR       getPartitionId                          | Get the drive's current partition
@@ -121,6 +128,7 @@ fOpen:              LINK      %FP,#0
                     BRA       4f
 5:                  MOVE.L    #0,%D0
                     BRA       4f
+          .endif
 
                     /* CP/M Partition */
 2:                  MOVE.W    currentDrive,-(%SP)                     | driveId
@@ -164,10 +172,12 @@ fRead:              LINK      %FP,#0
 
                     MOVE.W    F_FILESYS_TYPE,%D0
 
-                    CMPI.W    #FS_FAT,%D0                             | FAT
+          .ifdef              IS_68030
+                    CMPI.W    #FS_FAT_P,%D0                           | FAT
                     BEQ       1f
+          .endif
 
-                    CMPI.W    #FS_CPM,%D0                             | CP/M
+                    CMPI.W    #FS_CPM_P,%D0                           | CP/M
                     BEQ       2f
 
                     CMPI.W    #FS_NONE,%D0                            | None
@@ -177,6 +187,7 @@ fRead:              LINK      %FP,#0
                     BRA       4f
 
                     /* FAT Partition */
+          .ifdef              IS_68030
 1:                  MOVE.L    0x0A(%FP),-(%SP)                        | Param - buffer address
                     MOVE.W    0x08(%FP),%D0
                     EXT.L     %D0
@@ -184,6 +195,7 @@ fRead:              LINK      %FP,#0
                     BSR       fReadFAT
                     ADD       #0x08,%SP
                     BRA       4f
+          .endif
 
                     /* CP/M Partition or raw CP/M file system */
 2:                  MOVE.L    0x0A(%FP),-(%SP)                        | Param - buffer address
@@ -200,10 +212,12 @@ fRead:              LINK      %FP,#0
 *-----------------------------------------------------------------------------------------------------
 fClose:             MOVE.W    F_FILESYS_TYPE,%D0
 
-                    CMPI.W    #FS_FAT,%D0                             | FAT
+          .ifdef              IS_68030
+                    CMPI.W    #FS_FAT_P,%D0                           | FAT
                     BEQ       1f
+          .endif
 
-                    CMPI.W    #FS_CPM,%D0                             | CP/M
+                    CMPI.W    #FS_CPM_P,%D0                           | CP/M
                     BEQ       2f
 
                     CMPI.W    #FS_NONE,%D0                            | None
@@ -213,9 +227,11 @@ fClose:             MOVE.W    F_FILESYS_TYPE,%D0
                     BRA       3f
 
                     /* FAT Partition */
+          .ifdef              IS_68030
 1:                  BSR       fCloseFAT                               | Close the file
 *                    BSR       mediaClose                              | Close the FAT driver
                     BRA       3f
+          .endif
 
                     /* CP/M Partition or raw CP/M file system */
 2:                  BSR       fCloseCPM
@@ -234,14 +250,19 @@ listDirectory:      LINK      %FP,#-2                                 | local va
                     BSR       getFileSysType
                     ADD.L     #2,%SP
 
-                    CMPI.W    #FS_FAT,%D0
+          .ifdef              IS_68030
+                    CMPI.W    #FS_FAT_P,%D0
                     BEQ       1f
+          .endif
 
-                    CMPI.W    #FS_CPM,%D0
+                    CMPI.W    #FS_CPM_P,%D0
                     BEQ       2f
 
-                    CMPI.W    #FS_CROMIX,%D0
+                    CMPI.W    #FS_CROMIX_P,%D0
                     BEQ       5f
+
+                    CMPI.W    #FS_CROMIX_D,%D0
+                    BEQ       6f
 
                     CMPI.W    #FS_NONE,%D0
                     BEQ       3f
@@ -249,6 +270,7 @@ listDirectory:      LINK      %FP,#-2                                 | local va
                     PUTS      strUnsupportedType                      | Unsupported partition
                     BRA       4f
 
+          .ifdef              IS_68030
                     /* FAT Partition */
 1:                  MOVE.W    -2(%FP),-(%SP)                          | driveId
                     BSR       getPartitionId                          | Get the drive's current partition
@@ -267,6 +289,7 @@ listDirectory:      LINK      %FP,#-2                                 | local va
 
                     BSR       mediaClose                              | Close the FAT32 library
                     BRA       4f
+          .endif
 
                     /* CP/M Partition */
 2:                  MOVE.W    -2(%FP),-(%SP)                          | driveId
@@ -285,6 +308,11 @@ listDirectory:      LINK      %FP,#-2                                 | local va
                     ADD       #4,%SP
                     BRA       4f
 
+6:
+                    /* Cromix Disk */
+                    MOVE.L    #0,%D0
+                    JMP       7f
+
                     /* Cromix Partition */
 5:                  MOVE.W    -2(%FP),-(%SP)                          | driveId
                     BSR       getPartitionId                          | Get the drive's current partition
@@ -297,7 +325,7 @@ listDirectory:      LINK      %FP,#-2                                 | local va
                     BSR       getPartitionStart                       | Get the offset (in sectors) to the start of the partition
                     ADD       #8,%SP
 
-                    MOVE.L    %D0,-(%SP)                              | partitionStart
+7:                  MOVE.L    %D0,-(%SP)                              | partitionStart
                     MOVE.W    -2(%FP),%D0                             | driveId
                     EXT.L     %D0
                     MOVE.L    %D0,-(%SP)
@@ -325,7 +353,7 @@ getFileSysType:     LINK      %FP,#-2
                     BSR       hasValidTable                           | Does this drive have a MBR partition table 
                     ADD       #2,%SP
                     TST.W     %D0
-                    BNE       1f
+                    BNE       1f                                      | No
 
                     MOVE.W    -2(%FP),-(%SP)                          | driveId
                     BSR       getPartitionId                          | Get the drive's current partition
@@ -358,16 +386,35 @@ getFileSysType:     LINK      %FP,#-2
                     MOVE.W    #FS_OTHER,%D0
                     BRA       4f
 
+                    /* Read the first disk sector and check for the cromix signature */
+1:                  LEA       __free_ram_start__,%A0
+                    MOVE.L    %A0,-(%SP)                              | Param - destination buffer address
+                    MOVE.W    #1,-(%SP)                               | Param - count
+                    MOVE.W    -2(%FP),-(%SP)                          | Param - drive
+                    MOVE.L    #0,-(%SP)                               | Param - LBA
+                    BSR       readDiskSector
+                    ADD       #0x0c,%SP
+                    CMPI.B    #'C',0x78(%A0)                          | CSTD at offset 0x78
+                    BNE       1f
+                    CMPI.B    #'S',0x79(%A0)
+                    BNE       1f
+                    CMPI.B    #'T',0x7A(%A0)
+                    BNE       1f
+                    CMPI.B    #'D',0x7B(%A0)
+                    BNE       1f
+                    MOVE.W    #FS_CROMIX_D,%D0
+                    BRA       4f
+
 1:                  MOVE.W    #FS_NONE,%D0
                     BRA       4f
 
-2:                  MOVE.W    #FS_FAT,%D0
+2:                  MOVE.W    #FS_FAT_P,%D0
                     BRA       4f
 
-3:                  MOVE.W    #FS_CPM,%D0
+3:                  MOVE.W    #FS_CPM_P,%D0
                     BRA       4f
 
-5:                  MOVE.W    #FS_CROMIX,%D0
+5:                  MOVE.W    #FS_CROMIX_P,%D0
 
 4:                  UNLK      %FP
                     RTS

@@ -1,3 +1,13 @@
 /obj/
 /.project
 /release_0.1.0/
+
+flash/.idea/
+
+hello/obj/
+
+hello/target/
+
+hello/.project
+
+map/.idea/

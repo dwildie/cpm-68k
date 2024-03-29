@@ -56,10 +56,11 @@ initDisks:          LINK      %FP,#0
 
                     MOVE.W    %D0,D_FILESYS_TYPE
 
-                    CMPI.W    #FS_FAT,%D0                             | FAT
+          .ifdef              IS_68030
+                    CMPI.W    #FS_FAT_P,%D0                           | FAT
                     BEQ       1f
-
-                    CMPI.W    #FS_CPM,%D0                             | CP/M
+          .endif
+                    CMPI.W    #FS_CPM_P,%D0                           | CP/M
                     BEQ       2f
 
                     CMPI.W    #FS_NONE,%D0                            | None
@@ -68,12 +69,13 @@ initDisks:          LINK      %FP,#0
                     PUTS      strUnsupportedType                      | Unsupported partition
                     BRA       4f
 
+          .ifdef              IS_68030
                     /* FAT Partition */
 1:                  MOVE.W    #0,-(%SP)                               | Open virtual drive A
                     BSR       openVDisk
                     ADD       #2,%SP
                     BRA       4f
-
+          .endif
                     /* CP/M Partition */
 2:                  MOVE.W    currentDrive,-(%SP)                     | driveId
                     BSR       getPartitionId                          | Get the drive's current partition
@@ -102,10 +104,11 @@ initDisks:          LINK      %FP,#0
 *-----------------------------------------------------------------------------------------------------
 readDiskSector:     LINK      %FP,#0
 
-                    CMPI.W    #FS_FAT,D_FILESYS_TYPE
+          .ifdef              IS_68030
+                    CMPI.W    #FS_FAT_P,D_FILESYS_TYPE
                     BEQ       1f
-
-                    CMPI.W    #FS_CPM,D_FILESYS_TYPE
+          .endif
+                    CMPI.W    #FS_CPM_P,D_FILESYS_TYPE
                     BEQ       2f
 
                     CMPI.W    #FS_NONE,D_FILESYS_TYPE
@@ -114,6 +117,7 @@ readDiskSector:     LINK      %FP,#0
                     PUTS      strUnsupportedType                      | Unsupported partition
                     BRA       3f
 
+          .ifdef              IS_68030
                     /* FAT Partition */
 1:                  MOVE.L    0x10(%FP),-(%SP)                        | Param - buffer addres
                     MOVE.W    0x0E(%FP),-(%SP)                        | Param - sector count
@@ -122,7 +126,7 @@ readDiskSector:     LINK      %FP,#0
                     BSR       readVDisk
                     ADD       #0x0c,%SP
                     BRA       3f
-
+          .endif
                     /* CP/M Partition or raw CP/M file system */
 2:                  MOVE.W    0x0C(%FP),%D0                           | drive index
                     MULU.W    #0x2000,%D0                             | Calculate CPM partition offset 1024 tracks * 32 sectors/track * 512 /128
@@ -142,10 +146,11 @@ readDiskSector:     LINK      %FP,#0
 *-----------------------------------------------------------------------------------------------------
 writeDiskSector:    LINK      %FP,#0
 
-                    CMPI.W    #FS_FAT,D_FILESYS_TYPE
+          .ifdef              IS_68030
+                    CMPI.W    #FS_FAT_P,D_FILESYS_TYPE
                     BEQ       1f
-
-                    CMPI.W    #FS_CPM,D_FILESYS_TYPE
+          .endif
+                    CMPI.W    #FS_CPM_P,D_FILESYS_TYPE
                     BEQ       2f
 
                     CMPI.W    #FS_NONE,D_FILESYS_TYPE
@@ -154,6 +159,7 @@ writeDiskSector:    LINK      %FP,#0
                     PUTS      strUnsupportedType                      | Unsupported partition
                     BRA       3f
 
+          .ifdef              IS_68030
                     /* FAT Partition */
 1:                  MOVE.L    0x10(%FP),-(%SP)                        | Param - buffer addres
                     MOVE.W    0x0E(%FP),-(%SP)                        | Param - sector count
@@ -162,6 +168,7 @@ writeDiskSector:    LINK      %FP,#0
                     BSR       writeVDisk
                     ADD       #0x0c,%SP
                     BRA       3f
+          .endif
 
                     /* CP/M Partition or raw CP/M file system */
 2:                  MOVE.W    0x0C(%FP),%D0                           | drive index
@@ -180,6 +187,7 @@ writeDiskSector:    LINK      %FP,#0
 *---------------------------------------------------------------------------------------------------------
 * writeVDisk(long lba, word drive, word count, char *address)
 *---------------------------------------------------------------------------------------------------------
+          .ifdef              IS_68030
 writeVDisk:         LINK      %FP,#-4
 
                     MOVE.W    0x0C(%FP),-(%SP)                        | Open the disk image if it isn't and return file*
@@ -245,10 +253,12 @@ writeVDisk:         LINK      %FP,#-4
 
 5:                  UNLK      %FP
                     RTS
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
 * readVDisk(long lba, word drive, word count, char *address)
 *---------------------------------------------------------------------------------------------------------
+          .ifdef              IS_68030
 readVDisk:          LINK      %FP,#-4
 
                     MOVE.W    0x0C(%FP),-(%SP)                        | Open the disk image if it isn't and return file*
@@ -311,10 +321,12 @@ readVDisk:          LINK      %FP,#-4
 
 5:                  UNLK      %FP
                     RTS
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
 * openVDisk(word diskIndex)
 *---------------------------------------------------------------------------------------------------------
+          .ifdef              IS_68030
 openVDisk:          LINK      %FP,#-2                                 | Local variable for drive id
                     MOVEM.L   %D1-%D5/%A2,-(%SP)
 
@@ -395,6 +407,7 @@ ovd1:               LEA       TBL_FAT,%A2                             | FAT Tabl
 ret:                MOVEM.L   (%SP)+,%D1-%D5/%A2
                     UNLK      %FP
                     RTS
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
                     .section  .rodata.strings

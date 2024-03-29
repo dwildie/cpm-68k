@@ -1,8 +1,9 @@
 *-----------------------------------------------------------------------------------------------------
                     .include  "include/disk.i"
                     .include  "include/macros.i"
-                    
+
                     .text
+                    .global	  copyBiosTable
                     .global   biosInitDrives
                     .global   biosGetDriveStatus
                     .global   biosReadDriveBlock
@@ -16,8 +17,18 @@
                     .global   biosGetCommandTokenCount
                     .global   biosGetCommandToken
 
-Carry		        = 0b00000001 | Carry bit
-NotCarry  	        = 0b11111110
+Carry               =         0b00000001                              | Carry bit
+NotCarry            =         0b11111110
+
+*-----------------------------------------------------------------------------------------------------
+* For th 68000, copy the bios table to RAM to match the 68030
+*-----------------------------------------------------------------------------------------------------
+copyBiosTable:      MOVE.L    #biosTable,%A1
+                    MOVE.L    #__bios_table__,%A2
+                    MOVE.L    #0xb,%D0
+1:                  MOVE.L    (%A1)+,(%A2)+
+                    DBRA      %D0,1b
+                    RTS
 
 *-----------------------------------------------------------------------------------------------------
 * Get the status of both drives
@@ -36,7 +47,7 @@ biosInitDrives:     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 * Get the status of both drives
 *-----------------------------------------------------------------------------------------------------
 biosGetDriveStatus: MOVE.L    %D1,-(%SP)
-                    
+
                     CLR.L     %D0
                     MOVE.W    driveStatus,%D1
                     CMP.B     #DISK_AVAILABLE,%D1
@@ -61,24 +72,24 @@ biosReadDriveIdent: LINK      %FP,#0
                     BSR       setIdeDrive                             | Select drive
 
                     MOVE.L    0x0C(%FP),-(%A7)                        | Param - Buffer address
-					BSR       getDriveIdent
-					ADD.L     #4,%A7
-					
+                    BSR       getDriveIdent
+                    ADD.L     #4,%A7
+
                     MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
                     UNLK      %FP
-                    RTS       
- 
+                    RTS
+
 *-----------------------------------------------------------------------------------------------------
 * biosGetDiskSize(long drive)
 *-----------------------------------------------------------------------------------------------------
 biosGetDiskSize:    LINK      %FP,#0
                     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
-                    
+
                     MOVE.L    0x08(%FP),%D0                           | Param - drive
                     MOVE.W    %d0,-(%A7)
                     BSR       getDiskSize
                     ADDQ.L    #2,%A7
-                                            
+
                     MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
                     UNLK      %FP
                     RTS
@@ -167,15 +178,15 @@ biosHasChar:        MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 *-----------------------------------------------------------------------------------------------------
 * Get the command token count
 *-----------------------------------------------------------------------------------------------------
-biosGetCommandTokenCount: 
+biosGetCommandTokenCount:
                     MOVE.W    cmdTokenCount,%D0
                     RTS
-                                        
+
 *-----------------------------------------------------------------------------------------------------
 * Get the command token address
 *-----------------------------------------------------------------------------------------------------
-biosGetCommandToken: 
-                    LINK      %FP,#0 
+biosGetCommandToken:
+                    LINK      %FP,#0
                     MOVEM.L   %D1-%D7/%A0-%A7,-(%SP)
 
                     MOVE.L    0x08(%FP),%D0                           | Param - arg number
@@ -184,13 +195,13 @@ biosGetCommandToken:
                     BLO       1f
                     ORI.B     #Carry,%CCR                             | Set carry
                     BRA       5f
-                    
+
 1:                  LEA.L     cmdTokens,%A0
                     LSL.L     #2,%D0
                     ADD.L     %A0,%D0
                     AND.B     #NotCarry,%CCR                          | Clear carry
-                    
+
 5:                  MOVEM.L   (%SP)+,%D1-%D7/%A0-%A7
                     UNLK      %FP
                     RTS
-                    
+

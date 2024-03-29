@@ -75,10 +75,11 @@ obj/s-record/%.o:	../s-record/%.s | obj/s-record
 # M68000 CPM Boot Loader
 # --------------------------------------------------------------------------------
 obj/main.o: ../main.s | obj
-	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
+	cat $< | sed "s/__BUILD-DATE__/$$(date '+%Y-%m-%d %H:%M:%S')/" > $(@:.o=.as)
+	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $(@:.o=.as)
 
-obj/boot.srec: obj/main.o $(OBS) | obj
-	$(LD) $(LDFLAGS) -T boot.lnk obj/main.o $(OBS) $(LIBS) -Map $(@:.srec=.map) -o $@
+obj/boot.srec: obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) | obj
+	$(LD) $(LDFLAGS) -T boot.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
 
 target/boot.srec: obj/boot.srec | target
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68000 Boot Loader" -o $@

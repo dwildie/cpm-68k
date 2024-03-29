@@ -80,10 +80,12 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
                     BSR       getFileSysType
                     ADD.L     #2,%SP
 
-                    CMPI.W    #FS_FAT,%D0
+          .ifdef              IS_68030
+                    CMPI.W    #FS_FAT_P,%D0
                     BEQ       1f
+          .endif
 
-                    CMPI.W    #FS_CPM,%D0
+                    CMPI.W    #FS_CPM_P,%D0
                     BEQ       2f
 
                     CMPI.W    #FS_NONE,%D0
@@ -93,6 +95,7 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
                     BRA       5f
 
                     /* FAT partition */
+          .ifdef              IS_68030
 1:                  MOVE.W    -2(%FP),-(%SP)                          | driveId
                     BSR       getPartitionId                          | Get the drive's current partition
                     ADD       #2,%SP
@@ -125,6 +128,7 @@ cpmBootLoader:      LINK      %FP,#-2                                 | local va
                     BSR       fCloseFAT                               | Close the file
                     BSR       mediaClose                              | Shutdown the fat driver
                     BRA       6f                                      | Load
+          .endif
 
                     /* CP/M partition */
 2:                  MOVE.W    -2(%FP),-(%SP)                          | driveId
