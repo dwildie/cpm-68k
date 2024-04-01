@@ -9,8 +9,8 @@
 #define TRUE                    1
 
 #define SST_ID                  0xBF      /* SST Manufacturer's ID code   */
-#define SST_39SF010             0xB5      /* SST 39SF040 device code      */
-#define SST_39SF020             0xB6      /* SST 39SF040 device code      */
+#define SST_39SF010             0xB5      /* SST 39SF010 device code      */
+#define SST_39SF020             0xB6      /* SST 39SF020 device code      */
 #define SST_39SF040             0xB7      /* SST 39SF040 device code      */
 #define DEV_UNKNOWN             0x00      /* Unknown device               */
 
