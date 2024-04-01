@@ -130,47 +130,8 @@ int writeSectorAll(long base, long sector, BYTE value) {
     return SECTOR_SIZE;
 }
 
-void map() {
-    printf ("16MB Memory map\r\n");
-    printf("         0 1 2 3 4 5 6 7 8 9 A B C D E F\r\n");
-    for (int i = 0xF; i >= 0; i--) {
-        printf("%X00000 -", i);
-
-        for (int j = 0; j < 0x10; j++) {
-            char type = 'R';
-//            if (i == 0xf && j == 0xf) {
-//                type = 'P';
-//            } else {
-                volatile BYTE *loc = (BYTE *) (i * 0x100000L + j * 0x10000L);
-                BYTE original = *loc;
-                BYTE test = ~original;
-                *loc = test;
-                if (*loc == test) {
-                    type = 'W';
-//                } else if (original == 0) {
-//                    type = 'X';
-                }
-                *loc = original;
-//            }
-            printf(" %c", type);
-        }
-
-        printf("\r\n");
-    }
-    printf("\r\n\r\n");
-}
-
 int main(int argc, char **argv) {
     printf("68030 flash, Damian Wildie, 10/01/2023 V%d.%d\r\n", VERSION_MAJOR, VERSION_MINOR);
-
-//    printf("argc = %d\r\n", argc);
-//    for (int i = 0; i < argc; i++) {
-//        printf("argv[%d] = \"%s\"\r\n", i, argv[i]);
-//    }
-
-//    printf("biosTable 0x%lx, fatTable 0x%lx\r\n", (long)biosTable, (long)fatTable);
-
-    map();
 
     int devId = getSSTDeviceId(BASE_ADDRESS);
     printf("devId = %s (0x%02x)\r\n", deviceName(devId), devId);
