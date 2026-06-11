@@ -20,8 +20,9 @@
 Carry               =         0b00000001                              | Carry bit
 NotCarry            =         0b11111110
 
+	.ifdef		IS_68000
 *-----------------------------------------------------------------------------------------------------
-* For th 68000, copy the bios table to RAM to match the 68030
+* For the 68000, copy the bios table to RAM to match the 68030
 *-----------------------------------------------------------------------------------------------------
 copyBiosTable:      MOVE.L    #biosTable,%A1
                     MOVE.L    #__bios_table__,%A2
@@ -29,6 +30,7 @@ copyBiosTable:      MOVE.L    #biosTable,%A1
 1:                  MOVE.L    (%A1)+,(%A2)+
                     DBRA      %D0,1b
                     RTS
+	.endif
 
 *-----------------------------------------------------------------------------------------------------
 * Get the status of both drives
