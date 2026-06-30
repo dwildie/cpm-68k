@@ -205,6 +205,11 @@ showDriveIdent:     PEA       __free_ram_start__
                     MOVE.B    #4,%D3                                  | Character count in words
                     BSR       writeIdStr                              | Print [A2], [D3] X 2 characters
 
+                    PUTS      strSectors
+                    MOVE.L    ID_SEC_COUNT(%A2),%D0                   | Number of sectors, ie max LBA
+                    TO_BIG_END %D0
+                    BSR       writeHexLong
+
 1:                  BSR       newLine
                     RTS
 
@@ -247,6 +252,7 @@ strDriveIdentSuf:   .asciz    " Identity information"
 strDriveModel:      .asciz    "\r\nModel     : "
 strDriveSerial:     .asciz    "\r\nSerial No : "
 strDriveFirmw:      .asciz    "\r\nFirmware  : "
+strSectors:         .asciz    "\r\nSectors   : "
 strNotInitialised:  .asciz    "Failed to initialise\r\n"
 strIdentError:      .asciz    "Failed to read drive identifier\r\n"
 
