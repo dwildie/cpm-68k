@@ -23,13 +23,16 @@ CCFLAGS += -I../../fat/include
 LD       = m68k-elf-ld
 LDFLAGS  += -L../../fat/target
 LDFLAGS  += -L../../baselibc/target
-LDFLAGS  += -L/usr/local/lib/gcc/m68k-elf/9.2.0/m68000
+LDFLAGS  += -L/usr/local/lib/gcc/m68k-elf/12.1.0/m68000
 
 LIBS     += -lfat
 LIBS     += -lc
 LIBS     += -lgcc
 
+CP      = cp
+
 SRC_DIR = ..
+DEPLOY_DIR = /mnt/Damian/cloud/synced/retroComputing/S100/68030\ board/boot/
 
 BIOS_AS_SRC = $(wildcard ../bios/*.s)
 BIOS_AS_OBJ = $(patsubst ../bios/%.s, obj/bios/%.o, $(BIOS_AS_SRC))
@@ -66,6 +69,9 @@ OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(LIB_C_OBJ) $(IO
 # --------------------------------------------------------------------------------
 all: target/boot30-16mb-flash.srec target/boot30-16mb.srec target/boot30-4mb.srec target/boot30-ss1.srec
 
+deploy: all
+	$(CP) target/boot30-*.srec $(DEPLOY_DIR)
+	
 obj/bios/%.o:	../bios/%.s | obj/bios
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
@@ -100,15 +106,19 @@ obj/mmu/%.o:	../mmu/%.s | obj/mmu
 # --------------------------------------------------------------------------------
 # M68030 CPM Boot Loader
 # --------------------------------------------------------------------------------
-obj/main.o: ../main.s | obj
-	cat $< | sed "s/__BUILD-DATE__/$$(date '+%Y-%m-%d %H:%M:%S')/" > $(@:.o=.as)
+obj/main-16mb.o: ../main.s | obj
+	cat $< | sed -e "s/__BUILD-DATE__/$$(date '+%Y-%m-%d %H:%M:%S')/" -e "s/__RAM_SIZE__/16MB/" > $(@:.o=.as)
+	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $(@:.o=.as)
+
+obj/main-4mb.o: ../main.s | obj
+	cat $< | sed -e "s/__BUILD-DATE__/$$(date '+%Y-%m-%d %H:%M:%S')/" -e "s/__RAM_SIZE__/4MB/" > $(@:.o=.as)
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $(@:.o=.as)
 
 # --------------------------------------------------------------------------------
 # Propellor console - 16MB + Flash
 # --------------------------------------------------------------------------------
-obj/boot30-16mb-flash.srec: boot-16mb-flash.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS))
-	$(LD) $(LDFLAGS) -T boot-16mb-flash.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
+obj/boot30-16mb-flash.srec: boot-16mb-flash.lnk obj/main-16mb.o $(filter-out obj/io/cpro-ss1.o, $(OBS))
+	$(LD) $(LDFLAGS) -T boot-16mb-flash.lnk obj/main-16mb.o $(filter-out obj/bios/disks.o, $(filter-out obj/io/cpro-ss1.o, $(OBS))) obj/bios/disks.o $(LIBS) -Map $(@:.srec=.map) -o $@
 
 target/boot30-16mb-flash.srec: obj/boot30-16mb-flash.srec | target
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 16MB+Flash Boot Loader" -o $@
@@ -117,8 +127,8 @@ target/boot30-16mb-flash.srec: obj/boot30-16mb-flash.srec | target
 # --------------------------------------------------------------------------------
 # Propellor console - 16MB
 # --------------------------------------------------------------------------------
-obj/boot30-16mb.srec: boot-16mb.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS))
-	$(LD) $(LDFLAGS) -T boot-16mb.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
+obj/boot30-16mb.srec: boot-16mb.lnk obj/main-16mb.o $(filter-out obj/io/cpro-ss1.o, $(OBS))
+	$(LD) $(LDFLAGS) -T boot-16mb.lnk obj/main-16mb.o $(filter-out obj/bios/disks.o, $(filter-out obj/io/cpro-ss1.o, $(OBS))) obj/bios/disks.o $(LIBS) -Map $(@:.srec=.map) -o $@
 
 target/boot30-16mb.srec: obj/boot30-16mb.srec | target
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 16MB Boot Loader" -o $@
@@ -127,8 +137,8 @@ target/boot30-16mb.srec: obj/boot30-16mb.srec | target
 # --------------------------------------------------------------------------------
 # Propellor console - 4MB
 # --------------------------------------------------------------------------------
-obj/boot30-4mb.srec: boot-4mb.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS))
-	$(LD) $(LDFLAGS) -T boot-4mb.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
+obj/boot30-4mb.srec: boot-4mb.lnk obj/main-4mb.o $(filter-out obj/io/cpro-ss1.o, $(OBS))
+	$(LD) $(LDFLAGS) -T boot-4mb.lnk obj/main-4mb.o $(filter-out obj/bios/disks.o, $(filter-out obj/io/cpro-ss1.o, $(OBS))) obj/bios/disks.o $(LIBS) -Map $(@:.srec=.map) -o $@
 
 target/boot30-4mb.srec: obj/boot30-4mb.srec | target
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 4MB Boot Loader" -o $@
@@ -137,8 +147,8 @@ target/boot30-4mb.srec: obj/boot30-4mb.srec | target
 # --------------------------------------------------------------------------------
 # SS1 console - 16MB
 # --------------------------------------------------------------------------------
-obj/boot30-ss1.srec: boot-16mb.lnk obj/main.o $(filter-out obj/io/propellor.o, $(OBS))
-	$(LD) $(LDFLAGS) -T boot-16mb.lnk obj/main.o $(filter-out obj/io/propellor.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
+obj/boot30-ss1.srec: boot-16mb.lnk obj/main-16mb.o $(filter-out obj/io/propellor.o, $(OBS))
+	$(LD) $(LDFLAGS) -T boot-16mb.lnk obj/main-16mb.o $(filter-out obj/bios/disks.o, $(filter-out obj/io/propellor.o, $(OBS))) obj/bios/disks.o $(LIBS) -Map $(@:.srec=.map) -o $@
 
 target/boot30-ss1.srec: obj/boot30-ss1.srec | target
 	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68030 16MB Boot Loader - CompuPro SS1" -o $@
