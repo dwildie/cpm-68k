@@ -17,7 +17,7 @@ CCFLAGS += -I../../fat/include
 LD       = m68k-elf-ld
 LDFLAGS  += -L../../fat/target
 LDFLAGS  += -L../../baselibc/target
-LDFLAGS  += -L/usr/local/lib/gcc/m68k-elf/9.2.0/m68000
+LDFLAGS  += -L/usr/local/lib/gcc/m68k-elf/12.1.0/m68000
 
 #LIBS     += -lfat
 LIBS     += -lc
@@ -46,7 +46,7 @@ SREC_AS_OBJ = $(patsubst ../s-record/%.s, obj/s-record/%.o, $(SREC_AS_SRC))
 
 OBS = $(CMD_AS_OBJ) $(BIOS_AS_OBJ) $(IDE_AS_OBJ) $(LIB_AS_OBJ) $(IO_AS_OBJ) $(IO_C_OBJ) $(DSK_AS_OBJ) $(DSK_C_OBJ) $(SREC_AS_OBJ) 
 
-all: target/boot.srec
+all: target/boot-16mb.srec target/boot-4mb.srec
 
 obj/bios/%.o:	../bios/%.s | obj/bios
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
@@ -72,17 +72,31 @@ obj/s-record/%.o:	../s-record/%.s | obj/s-record
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $<
 
 # --------------------------------------------------------------------------------
-# M68000 CPM Boot Loader
+# M68000 CPM 16MB Boot Loader
 # --------------------------------------------------------------------------------
-obj/main.o: ../main.s | obj
-	cat $< | sed "s/__BUILD-DATE__/$$(date '+%Y-%m-%d %H:%M:%S')/" > $(@:.o=.as)
+obj/main-16mb.o: ../main.s | obj
+	cat $< | sed -e "s/__BUILD-DATE__/$$(date '+%Y-%m-%d %H:%M:%S')/" -e "s/__RAM_SIZE__/16MB/"> $(@:.o=.as)
 	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $(@:.o=.as)
 
-obj/boot.srec: obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) | obj
-	$(LD) $(LDFLAGS) -T boot.lnk obj/main.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
+obj/boot-16mb.srec: obj/main-16mb.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) | obj
+	$(LD) $(LDFLAGS) -T boot-16mb.lnk obj/main-16mb.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
 
-target/boot.srec: obj/boot.srec | target
-	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68000 Boot Loader" -o $@
+target/boot-16mb.srec: obj/boot-16mb.srec | target
+	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68000 16MB Boot Loader" -o $@
+	srec_info $@
+
+# --------------------------------------------------------------------------------
+# M68000 CPM 4MB Boot Loader
+# --------------------------------------------------------------------------------
+obj/main-4mb.o: ../main.s | obj
+	cat $< | sed -e "s/__BUILD-DATE__/$$(date '+%Y-%m-%d %H:%M:%S')/" -e "s/__RAM_SIZE__/4MB/"> $(@:.o=.as)
+	$(AS) $(ASFLAGS) -a=$(@:.o=.lst) -o $@ $(@:.o=.as)
+
+obj/boot-4mb.srec: obj/main-4mb.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) | obj
+	$(LD) $(LDFLAGS) -T boot-4mb.lnk obj/main-4mb.o $(filter-out obj/io/cpro-ss1.o, $(OBS)) $(LIBS) -Map $(@:.srec=.map) -o $@
+
+target/boot-4mb.srec: obj/boot-4mb.srec | target
+	srec_cat $< -fill 0x00 -over $< -header="CP/M-68K 68000 4MB Boot Loader" -o $@
 	srec_info $@
 
 clean:
