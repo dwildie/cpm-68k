@@ -2,22 +2,30 @@
                     .include  "include/ide.i"
                     .include  "include/io-device.i"
                     .include  "include/file-sys.i"
+                    .include  "include/ascii.i"
 
 lineBufferLen       =         80
 maxTokens           =         10
                     .global   cmdLoop
+                    .global   bootCpmCmd,runCmd
                     .global   bootOS9Cmd
                     .global   cmdTokens
                     .global   cmdTokenCount
+                    .global   conTestCmd
+                    .global   repeatCmd
+                    .global   cmdExec
+                    .global   saveBuffer
 
 *---------------------------------------------------------------------------------------------------------
                     .bss
                     .align(2)
 
 lineBuffer:         ds.b      lineBufferLen
+lastBuffer:         ds.b      lineBufferLen
 cmdTokens:          ds.l      maxTokens
 cmdTokenCount:      ds.w      1
 dumpAddr:           ds.l      1
+repeatedCmd:        ds.w      1
 
 *---------------------------------------------------------------------------------------------------------
 * Create the command table.  Each entry has three pointers:
@@ -30,6 +38,7 @@ dumpAddr:           ds.l      1
                     .align(16)
 
 cmdTable:                                                             | Array of command entries
+                    CMD_TABLE_ENTRY ".", ".", repeatCmd, ".     repeat last command", 1
                     CMD_TABLE_ENTRY "a", "a:", driveACmd, "a                   : Select drive A", 0
                     CMD_TABLE_ENTRY "b", "b:", driveBCmd, "b                   : Select drive B", 0
           .ifdef              IS_68030
@@ -46,6 +55,14 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "fdisk", "fdisk", fdiskCmd, "fdisk               : Display the current drive's MBR partition table", 0
                     CMD_TABLE_ENTRY "help", "h", helpCmd, "help                : Display the list of commands", 0
                     CMD_TABLE_ENTRY "id", "id", idCmd, "id                  : Display the drive's id info", 0
+          .ifdef              IS_68030
+                    CMD_TABLE_ENTRY "idc8t", "idc8t", idc8tCmd, "idc8t               : IDC 8bit RAM test", 0
+                    CMD_TABLE_ENTRY "idc8r", "idc8r", idc8rCmd, "idc8r               : IDC 8bit RAM read", 0
+                    CMD_TABLE_ENTRY "idc16t", "idc16t", idc16tCmd, "idc16t              : IDC 16bit RAM test", 0
+                    CMD_TABLE_ENTRY "idc16r", "idc16r", idc16rCmd, "idc16r              : IDC 16bit RAM read", 0
+                    CMD_TABLE_ENTRY "idc16rr", "idc16rr", idc16rrCmd, "idc16rr             : IDC 16bit RAM read repeat", 0
+                    CMD_TABLE_ENTRY "idcv", "idcv", idcvCmd, "idcv                : IDC Verify", 0
+          .endif
                     CMD_TABLE_ENTRY "init", "init", initIdeDriveCmd, "init                : Initialise the current IDE drive", 0
                     CMD_TABLE_ENTRY "irqm", "qm", irqMaskCmd, "irqm                : Display or set the IRQ mask", 0
                     CMD_TABLE_ENTRY "irqc", "qc", showIrqCountsCmd, "irqc                : Display the IRQ counts", 0
@@ -92,8 +109,10 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "ssp", "ssp", sspCmd, "ssp <addr>          : Set the stack pointer to <addr> and restart", 0
                     CMD_TABLE_ENTRY "stack", "s", stackCmd, "stack               : Test the stack", 0
                     CMD_TABLE_ENTRY "status", "status", statusCmd, "status              : Read the status register of the current drive", 0
+          .endif
                     CMD_TABLE_ENTRY "testb", "tb", testByteCmd, "testb <addr> <len>  : Memory test <len> bytes starting at <addr>", 0
                     CMD_TABLE_ENTRY "testd", "td", testDWordCmd, "testd <addr> <len>  : Memory test <len> double words starting at <addr>", 0
+          .ifdef              IS_68030
                     CMD_TABLE_ENTRY "testf", "tf", testDWordFCmd, "testf <addr> <len>  : Memory fast test <len> double words starting at <addr>", 0
                     CMD_TABLE_ENTRY "ts", "ts", tuartStatusCmd, "ts <A|B>            : Display TU-ART port A or B status", 0
                     CMD_TABLE_ENTRY "ti", "ti", tuartInitCmd, "ti                  : Initialise TU-ART ports", 0
@@ -106,6 +125,9 @@ cmdTable:                                                             | Array of
                     CMD_TABLE_ENTRY "w3", "w3", ideWait3Cmd, "w3                  : Set the IDE wait 3 parameter", 1
           .ifdef              IS_68030
                     CMD_TABLE_ENTRY "exec", "x", execCmd, "exec <file> <params>: Execute COFF/ELF <file>", 0
+          .endif
+          .ifdef              IS_68030
+                    CMD_TABLE_ENTRY "cont", "z", conTestCmd, "cont <chars>        : test console", 0
           .endif
 
 cmdTableLength      =         . - cmdTable
@@ -140,28 +162,66 @@ cmdLoop:            BSR       newLine
                     CMPI.B    #0,%D0                                  | Check for empty line
                     BEQ       cmdLoop                                 | Try again
 
-                    LEA       cmdTokens,%A1
+                    MOVE      #0,repeatedCmd                          | Is not a repeated command
+
+                    BSR       cmdExec
+                    BRA       cmdLoop                                 | and repeat ...
+
+*---------------------------------------------------------------------------------------------------------
+* Execute the command from the buffer
+*---------------------------------------------------------------------------------------------------------
+cmdExec:            LEA       cmdTokens,%A1
                     MOVE.B    #maxTokens,%D1
                     BSR       split
                     MOVE.W    %D0,cmdTokenCount                       | Returns token count
 
                     TST.B     %D0                                     | Check for a blank string
-                    BEQ       cmdLoop
+                    BEQ       3f
 
                     LEA       cmdTokens,%A1
                     MOVE.L    (%A1),%A0                               | Look for a command that matches the first token
-rc1:                BSR       getCmd
+                    BSR       getCmd
                     BEQ       1f
 
                     BSR       unknownCmd                              | Unknown command, display error
-                    BRA       cmdLoop                                 | and continue
+                    BEQ       3f                                      | and continue
 
-1:                  MOVE.L    cmdEntrySubroutine(%A0),%A2             | Get the address of the command
+1:                  TST       cmdEntryHidden(%A0)                     | Don't save if hidden
+                    BNE       2f
+                    TST       repeatedCmd
+                    BNE       2f
+
+                    JSR       saveBuffer                              | Save the buffer so the command can be repeated
+2:                  MOVE.L    cmdEntrySubroutine(%A0),%A2             | Get the address of the command
                     MOVE.W    cmdTokenCount,%D0                       | %D0 will contain the number of command line tokens
                     LEA       cmdTokens,%A0                           | %A0 will contain the token array
                     JSR       (%A2)                                   | Jump to the command's subroutine
+4:                  RTS                                               | and continue
 
-                    BRA       cmdLoop                                 | and repeat ...
+*---------------------------------------------------------------------------------------------------------
+* Save the command buffer to the history buffer
+*---------------------------------------------------------------------------------------------------------
+saveBuffer:         MOVEM.L   %A0-%A1/%D0,-(%SP)
+
+                    MOVE.B    #lineBufferLen,%D0                      | Length
+                    LEA       lineBuffer,%A0                          | Source
+                    LEA       lastBuffer,%A1                          | Destination
+                    JSR       memCpy                                  | Copy
+
+                    MOVEM.L   (%SP)+,%A0-%A1/%D0
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Relaod the command buffer from the history buffer
+*---------------------------------------------------------------------------------------------------------
+loadBuffer:         MOVEM.L   %A0-%A1/%D0,-(%SP)
+
+                    MOVE.B    #lineBufferLen,%D0                      | Length
+                    LEA       lastBuffer,%A0                          | Source
+                    LEA       lineBuffer,%A1                          | Destination
+
+                    MOVEM.L   (%SP)+,%A0-%A1/%D0
+                    RTS
 
 *---------------------------------------------------------------------------------------------------------
 * Search the command table for the command pointed to by %A0, return a pointer to the command entry in %A0
@@ -217,6 +277,20 @@ helpCmd:            BSR       newLine
 *
 *---------------------------------------------------------------------------------------------------------
 unknownCmd:         PUTS      strUnknownCommand
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* Repeat the last command
+*---------------------------------------------------------------------------------------------------------
+repeatCmd:          PUTCH     #BS
+                    LEA       lastBuffer,%A0                          | Display the command
+                    MOVE.L    %A0,%A2
+                    BSR       writeStr
+                    BSR       newLine
+
+                    MOVE      #1,repeatedCmd                          | Is a repeated command
+                    BSR       stringLen                               | Get the string length
+                    BSR       cmdExec                                 | Execute the loaded command
                     RTS
 
 *---------------------------------------------------------------------------------------------------------
@@ -316,6 +390,44 @@ idCmd:              BSR       getDriveStatus
                     BSR       showDriveIdent                          | Show the drive's indent information
 
 2:                  RTS
+
+          .ifdef              IS_68030
+*---------------------------------------------------------------------------------------------------------
+* IDC 8bit RAM test
+*---------------------------------------------------------------------------------------------------------
+idc8tCmd:           BSR       idc8BitTest
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* IDC 8bit RAM read
+*---------------------------------------------------------------------------------------------------------
+idc8rCmd:           BSR       idc8BitRead
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* IDC 16bit RAM test
+* --------------------------------------------------------------------------------------------------------
+idc16tCmd:          BSR       idc16BitTest
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* IDC 16bit RAM read repeat
+*---------------------------------------------------------------------------------------------------------
+idc16rrCmd:         BSR       idc16BitReadRepeat
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* IDC 16bit RAM read
+*---------------------------------------------------------------------------------------------------------
+idc16rCmd:          BSR       idc16BitRead
+                    RTS
+
+*---------------------------------------------------------------------------------------------------------
+* IDC Verify
+*---------------------------------------------------------------------------------------------------------
+idcvCmd:            BSR       idcVerify
+                    RTS
+          .endif
 
 *---------------------------------------------------------------------------------------------------------
 * Key - ASCII command
@@ -524,7 +636,7 @@ bootCromixCmd:
                     BNE       6f
                     MOVE.L    #0,%D0                                  | partitionStart
                     BRA       9f
-                    
+
 6:                  MOVE.W    currentDrive,-(%SP)                     | driveId
                     BSR       getPartitionId                          | Get the drive's current partition
                     ADD       #2,%SP
@@ -577,6 +689,42 @@ bootOS9Cmd:
                     MOVE.L    0(%A0),%SP
                     MOVE.L    4(%A0),%A0
                     JMP       (%A0)
+          .endif
+
+*---------------------------------------------------------------------------------------------------------
+* Console test
+*---------------------------------------------------------------------------------------------------------
+          .ifdef              IS_68030
+conTestCmd:         CMPI.B    #2,%D0
+                    BLT       1f
+                    MOVE.L    4(%A0),%A0
+                    BSR       asciiToLong                             | value returned in D0
+                    MOVE.L    %D0,%D4
+                    BRA       2f
+
+1:                  MOVE.L    #1,%D4
+2:                  BSR       newLine
+
+                    MOV.B     #CR,%D0
+                    BSR       p_outch
+                    MOV.B     #LF,%D0
+                    BSR       p_outch
+
+3:                  MOV.B     #'0',%D0
+4:                  BSR       p_outch
+                    ADD.B     #1,%D0
+                    CMPI      #'9',%D0
+                    BLE       4b
+
+                    MOV.B     #CR,%D0
+                    BSR       p_outch
+                    MOV.B     #LF,%D0
+                    BSR       p_outch
+
+                    SUB.L     #1,%D4
+                    BNE       3b
+
+                    RTS
           .endif
 
 *---------------------------------------------------------------------------------------------------------
@@ -658,7 +806,6 @@ bootCpmCmd:         BSR       newLine
                     PUTS      strBootLoaderError                      | Should never return
                     RTS
 
-          .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
 * Memory byte test command: %D0 contains the number of entered command args, %A0 the start of the arg array
 *---------------------------------------------------------------------------------------------------------
@@ -713,6 +860,7 @@ testDWordCmd:       CMPI.B    #3,%D0                                  | Needs th
 
                     RTS
 
+          .ifdef              IS_68030
 *---------------------------------------------------------------------------------------------------------
 * Memory double word fast test command: %D0 contains the number of entered command args, %A0 the start of the arg array
 *---------------------------------------------------------------------------------------------------------
