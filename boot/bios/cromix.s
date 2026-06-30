@@ -3,7 +3,7 @@
                     .include  "include/macros.i"
 
                     .text
-                    .global	  copyBiosTable
+                    .global   copyBiosTable
                     .global   biosInitDrives
                     .global   biosGetDriveStatus
                     .global   biosReadDriveBlock
