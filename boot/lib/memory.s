@@ -5,9 +5,25 @@
                     .global   memDump
                     .global   memCmp
                     .global   memClr
+                    .global   memCpy
                     .global   memByteTest
                     .global   memDWordTest,tstd1
                     .global   memDWordFast,tstf1
+
+*-----------------------------------------------------------------------------------------------------
+* Copy memory region %A0 of length %D0 bytes to %A1.
+*-----------------------------------------------------------------------------------------------------
+memCpy:             MOVEM.L   %A0-%A1,-(%SP)
+
+1:                  TST.L     %D0                                     | Check if we are done
+                    BEQ       2f                                      | No, Copy next byte
+
+                    SUBQ.L    #1,%D0
+                    MOVE.B    (%A0)+,(%A1)+
+                    BRA       1b
+
+2:                  MOVEM.L   (%SP)+,%A0-%A1
+                    RTS
 
 *-----------------------------------------------------------------------------------------------------
 * Compare two memory regions %A0 & %A1 of length %D0 bytes. %D0 will return 0 if identical, otherwise, 1
@@ -100,7 +116,6 @@ memDump:            MOVEM.L   %D1-%D4/%A0-%A1,-(%SP)
                     MOVEM.L   (%SP)+,%D1-%D4/%A0-%A1                  | Done, restore regs and return 
                     RTS
 
-          .ifdef              IS_68030
 *-------------------------------------------------------------------------
 * Test %D0 bytes in RAM starting at %A0
 *-----------------------------------------------------------------------------------------------------
@@ -503,6 +518,7 @@ tstd1:              MOVE.L    #0,%D3                                  | Test for
                     MOVEM.L   (%SP)+,%D1-%D5/%A0-%A3
                     RTS
 
+          .ifdef              IS_68030
 *-----------------------------------------------------------------------------------------------------
 * Fast Test %D0 DWords of RAM starting at %A0
 *-----------------------------------------------------------------------------------------------------
