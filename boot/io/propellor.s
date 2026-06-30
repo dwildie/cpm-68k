@@ -27,7 +27,7 @@ p_keystat:          MOVE.B    CON_STAT,%D0                            | Get a ke
                     RTS
 
 * ----------------------------------------------------------------------------------
-* Output a character from %D1.B
+* Output a character from %D0.B
 * ----------------------------------------------------------------------------------
 p_outch:            MOVE.B    CON_STAT,%D1                            | Check CRT status is ready to receive character
                     AND.B     #PROP_TBE,%D1
