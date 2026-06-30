@@ -347,18 +347,18 @@ processStart:       LINK      %FP,#0
                     MOVE.L    %D2,%D0
                     BSR       writeHexLong
                     BSR       newLine
-*                    PUTS      strProceed
-*
-*                    BSR       readCh                                  | Get user response
-*                    MOVE.B    %D0,%D1
-*                    BSR       toUpperChar
-*                    CMPI.B    #'Y',%D1
-*                    BNE       4f
-*
-*                    PUTS      strBooting
+                    PUTS      strProceed
+
+                    BSR       readCh                                  | Get user response
+                    MOVE.B    %D0,%D1
+                    BSR       toUpperChar
+                    CMPI.B    #'Y',%D1
+                    BNE       4f
+
+                    PUTS      strBooting
 
                     MOVE.L    %D2,%A0
-*boot:               JSR       (%A0)                                   | Good luck!
+boot:               JSR       (%A0)                                   | Good luck!
 
 4:                  UNLK      %FP
                     RTS
