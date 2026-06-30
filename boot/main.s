@@ -57,9 +57,9 @@ _start:             BSR       initDataSegs                            | initiali
 
                     BSR       setVectors                              | Setup the interupt vectors
 
-                    BSR       newLine                                 | Output an * to the default console to show that we are alive
-                    PUTCH     #'*'
-                    BSR       newLine
+*                    BSR       newLine                                 | Output an * to the default console to show that we are alive
+*                    PUTCH     #'*'
+*                    BSR       newLine
 
                     BSR       ioInit                                  | Initialise the IO subsystem and select the console device
 
@@ -110,7 +110,7 @@ strId1:             .asciz    "\n\rS100 68000"
           .ifdef              IS_68030
 strId1:             .asciz    "\n\rS100 68030"
           .endif
-strId2:             .asciz    " Boot Monitor V0.3.1.B3 __BUILD-DATE__, Damian Wildie\r\n\r\n"
+strId2:             .asciz    " __RAM_SIZE__ Boot Monitor V0.3.1.B5 __BUILD-DATE__, Damian Wildie\r\n\r\n"
 
 
 *---------------------------------------------------------------------------------------------------------
