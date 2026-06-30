@@ -2,6 +2,7 @@
 
                     .global   toUpperChar
                     .global   stringcmp
+                    .global   stringLen
                     .global   split
                     .global   asciiToLong
                     .global   asciiToByte
@@ -16,6 +17,20 @@ toUpperChar:        CMP.B     #0x40,%D1                               | LC->UC i
                     AND.B     #0x5F,%D1
 1:                  RTS
 
+
+*-----------------------------------------------------------------------------------------------------
+* Return the length of the null terminated string at %A0 in %D0.
+*-----------------------------------------------------------------------------------------------------
+stringLen:          MOVEM.L   %A0,-(%SP)
+
+                    MOVE.L    #0,%D0
+1:                  CMPI.B    #0,(%A0)+
+                    BEQ       2f
+                    ADDQ.L    #1,%D0
+                    BRA       1b
+
+2:                  MOVEM.L   (%SP)+,%A0
+                    RTS
 
 *-----------------------------------------------------------------------------------------------------
 * compare the string at %A0 with the string at %A1, setting %D0 to 0 if they are the same. Zero will
