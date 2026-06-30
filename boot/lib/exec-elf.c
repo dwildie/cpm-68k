@@ -145,12 +145,12 @@ uint32_t executeELF(int argc, char **argv, char *biosTable, char *fatTable, void
 
   Elf32_Shdr shdr;
 
-  printf("e_shoff %d, e_shentsize %d\r\n", ehdr->e_shoff, ehdr->e_shentsize);
+  //printf("e_shoff %d, e_shentsize %d\r\n", ehdr->e_shoff, ehdr->e_shentsize);
 
   // Read each section header
   for (int i = 0; i < ehdr->e_shnum; i++) {
     // Seek to the section header table entry
-    printf("Seeking to %d (0x%6x)\r\n", ehdr->e_shoff + i * ehdr->e_shentsize, ehdr->e_shoff + i * ehdr->e_shentsize);
+    //printf("Seeking to %d (0x%6x)\r\n", ehdr->e_shoff + i * ehdr->e_shentsize, ehdr->e_shoff + i * ehdr->e_shentsize);
     fl_fseek(fp, ehdr->e_shoff + i * ehdr->e_shentsize, SEEK_SET);
 
     if (fl_fread(&shdr, 1, sizeof(Elf32_Shdr), fp) != sizeof(Elf32_Shdr)) {
@@ -158,11 +158,11 @@ uint32_t executeELF(int argc, char **argv, char *biosTable, char *fatTable, void
       goto _exit;
     }
     if ((shdr.sh_type != SHT_PROGBITS && shdr.sh_type != SHT_NOBITS) || !(shdr.sh_flags & SHF_ALLOC)) {
-      printf("Ignoring section %d, type %02x, flags %02x, addr %06x, offset %06x, size %06x\r\n", i, shdr.sh_type, shdr.sh_flags, shdr.sh_addr, shdr.sh_offset, shdr.sh_size);
+      //printf("Ignoring section %d, type %02x, flags %02x, addr %06x, offset %06x, size %06x\r\n", i, shdr.sh_type, shdr.sh_flags, shdr.sh_addr, shdr.sh_offset, shdr.sh_size);
       continue;
     }
 
-    printf("Loading  section %d, type %02x, flags %02x, addr %06x, offset %06x, size %06x\r\n", i, shdr.sh_type, shdr.sh_flags, shdr.sh_addr, shdr.sh_offset, shdr.sh_size);
+    //printf("Loading  section %d, type %02x, flags %02x, addr %06x, offset %06x, size %06x\r\n", i, shdr.sh_type, shdr.sh_flags, shdr.sh_addr, shdr.sh_offset, shdr.sh_size);
 
     if (shdr.sh_type != SHT_NOBITS) {
       // Seek to the start of the sections content and read directly into RAM
@@ -175,7 +175,7 @@ uint32_t executeELF(int argc, char **argv, char *biosTable, char *fatTable, void
   }
   fl_fclose(fp);
 
-  printf("Starting execution at 0x%06x\r\n", ehdr->e_entry);
+  //printf("Starting execution at 0x%06x\r\n", ehdr->e_entry);
   return ((entry_t*)ehdr->e_entry)(argc, argv, biosTable, fatTable);
 
 _exit:
