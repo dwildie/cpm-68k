@@ -1,6 +1,6 @@
 # You can override the CFLAGS and C compiler externally,
 # e.g. make PLATFORM=cortex-m3
-CFLAGS += -g -Wall -Werror -I include
+CFLAGS += -g -Wall -Werror -Wno-error=array-parameter= -I include
 
 #ifeq ($(PLATFORM),cortex-m3)
 #  CC      = arm-none-eabi-gcc
