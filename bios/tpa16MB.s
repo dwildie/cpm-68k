@@ -1,3 +1,19 @@
+*---------------------------------------------------------------------------------------------------------
+                    .text
+                    .global   strInit
+
+                    .even
+
+          .ifne               _GNU_
+strInit:            .ascii    "CP/M-68K 16MB S100 BIOS V0.1.1.R3 [GNU]"
+          .endif
+
+          .ifne               _CPM_
+strInit:            .ascii    "CP/M-68K 16MB S100 BIOS V0.1.1.R3 [CPM]"
+          .endif
+
+                    DC.B      0
+                    
 *-----------------------------------------------------------------------------------------------------
                     .data
                     .global   dma,selTrack,selSector,selDrive,memTable

@@ -55,27 +55,33 @@ $(DIR_TARGET)/diskAll.img: $(DIR_TARGET) $(CPM_1_3_SRC)/DISK1 $(BOOT16_FILE)
 	$(SHELL) $(CMDS)/copyFiles.sh $@ 4mb-hd-2 $(CMODEM_DIR)/*
 
 # 10 partitions with curated CP/M distribution copied to partition 0 and bios sources to partition 1 and cmodem source to partition 2
-$(DIR_TARGET)/diskBase4MB.img: $(DIR_TARGET) $(CPM_1_3_SRC)/DISK1 $(CPM_1_2_SRC)/DISK3 $(BOOT4_FILE)
+$(DIR_TARGET)/diskBase4MB.img: $(DIR_TARGET) $(CPM_1_3_SRC)/DISK1 $(CPM_1_2_SRC)/DISK3 $(BOOT4_FILE) $(DIR_TARGET)/boot4MB.txt
 	@echo ""
 	@echo "**************** Building $@ ****************"
 	$(SHELL) $(CMDS)/formatPartitionedImage.sh $@ 10
 	$(SHELL) $(CMDS)/copyBase.sh $@ 0 10 $(CPM_1_3_SRC)
 	$(SHELL) $(CMDS)/installSystem.sh $@ $(BOOT4_FILE)
-	$(SHELL) $(CMDS)/copyFiles.sh $@ 4mb-hd-0 $(CPM_1_2_SRC)/DISK3/SGTTY.H
+	$(SHELL) $(CMDS)/copyFiles.sh $@ 4mb-hd-0 $(CPM_1_2_SRC)/DISK3/SGTTY.H $(DIR_TARGET)/boot4MB.txt
 	$(SHELL) $(CMDS)/copyFiles.sh $@ 4mb-hd-1 $(BIOS4_SRC) $(BIOS_SUB) $(BIOS4_SUB) $(SAMPLES_DIR)/*
 	$(SHELL) $(CMDS)/copyFiles.sh $@ 4mb-hd-2 $(CMODEM_DIR)/*
 
+$(DIR_TARGET)/boot4MB.txt:
+	@echo "CP/M-68K 4MB S100: $$(date +'%Y-%m-%d %H:%M:%S')" > $@
+	
 # 10 partitions with curated CP/M distribution copied to partition 0 and bios sources to partition 1 and cmodem source to partition 2
-$(DIR_TARGET)/diskBase16MB.img: $(DIR_TARGET) $(CPM_1_3_SRC)/DISK1 $(CPM_1_2_SRC)/DISK3 $(BOOT16_FILE)
+$(DIR_TARGET)/diskBase16MB.img: $(DIR_TARGET) $(CPM_1_3_SRC)/DISK1 $(CPM_1_2_SRC)/DISK3 $(BOOT16_FILE) $(DIR_TARGET)/boot16MB.txt
 	@echo ""
 	@echo "**************** Building $@ ****************"
 	$(SHELL) $(CMDS)/formatPartitionedImage.sh $@ 10
 	$(SHELL) $(CMDS)/copyBase.sh $@ 0 10 $(CPM_1_3_SRC)
 	$(SHELL) $(CMDS)/installSystem.sh $@ $(BOOT16_FILE)
-	$(SHELL) $(CMDS)/copyFiles.sh $@ 4mb-hd-0 $(CPM_1_2_SRC)/DISK3/SGTTY.H
+	$(SHELL) $(CMDS)/copyFiles.sh $@ 4mb-hd-0 $(CPM_1_2_SRC)/DISK3/SGTTY.H $(DIR_TARGET)/boot16MB.txt
 	$(SHELL) $(CMDS)/copyFiles.sh $@ 4mb-hd-1 $(BIOS16_SRC) $(BIOS_SUB) $(BIOS16_SUB) $(SAMPLES_DIR)/*
 	$(SHELL) $(CMDS)/copyFiles.sh $@ 4mb-hd-2 $(CMODEM_DIR)/*
-	
+
+$(DIR_TARGET)/boot16MB.txt:
+	@echo "CP/M-68K 16MB S100: $$(date +'%Y-%m-%d %H:%M:%S')" > $@
+		
 # 1 bootable partition with curated CP/M distribution copied to partition 0
 $(DIR_TARGET)/drive_a.img: $(DIR_TARGET) $(CPM_1_3_SRC)/DISK1
 	@echo ""

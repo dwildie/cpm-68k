@@ -303,16 +303,3 @@ puts:               MOVE.B    (%A0)+,%D1
                     BRA       puts
 p1:                 RTS
 
-*---------------------------------------------------------------------------------------------------------
-                    .text
-                    .even
-
-          .ifne               _GNU_
-strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.1.R3 [GNU]"
-          .endif
-
-          .ifne               _CPM_
-strInit:            .ascii    "CP/M-68K S100 BIOS V0.1.1.R3 [CPM]"
-          .endif
-
-                    DC.B      0
